@@ -1,10 +1,15 @@
 1. following files is already audited from other projects, so we don't need audit for these files and folders.
 
-   /interfaces/AggregatorV3Interface.sol       fetched from chainlink github and audited already with chainlink contract
+   | Files   |      descriptio      |
+   |----------|:-------------:|
+   | /interfaces/AggregatorV3Interface.sol |  fetched from chainlink github and audited already with chainlink contract | 
+   | /interfaces/PriceOracle.sol |    fetched from chainlink github and audited already with chainlink contract   |
+   | /interfaces/ERC20Interface.sol | fettched from openzepplin and audited already with openzepplin contract |
+    
 
-   /interfaces/PriceOracle.sol                 fetched from chainlink github and audited already with chainlink contract
+                    
 
-   /interfaces/ERC20Interface.sol              fettched from openzepplin and audited already with openzepplin contract
+                 
 
    /interfaces/IWETH.sol                       fettched from openzepplin and audited already with openzepplin contract
 
@@ -39,6 +44,7 @@
    Swapper/SushiSwapper.sol
 
    OkseCard.sol
+   OkseToken.sol
    OkseCardPriceOracle.sol
    OwnerConstants.sol
    Signer.sol
