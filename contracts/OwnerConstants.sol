@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: UNLICENSED
+//SPDX-License-Identifier: LICENSED
 pragma solidity ^0.7.0;
 
 contract OwnerConstants {

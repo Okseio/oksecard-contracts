@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: UNLICENSED
+//SPDX-License-Identifier: LICENSED
 
 // Solidity files have to start with this pragma.
 // It will be used by the Solidity compiler to validate its version.
