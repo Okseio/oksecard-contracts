@@ -27,7 +27,7 @@
 
    /Swapper/uniswapv2/ https://rskswap.com/audit.html
 
-2. following files are needed to audit
+2. following files are not audited before
 
    CustomPriceFeed/CustomPriceFeed.sol
 
