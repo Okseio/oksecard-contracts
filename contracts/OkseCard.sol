@@ -8,10 +8,14 @@ pragma abicoder v2;
 // import "hardhat/console.sol";
 import "./libraries/TransferHelper.sol";
 import "./interfaces/PriceOracle.sol";
+import "./interfaces/ILimitManager.sol";
+import "./interfaces/ILevelManager.sol";
+import "./interfaces/IMarketManager.sol";
 import "./interfaces/IWETH9.sol";
 import "./interfaces/ISwapper.sol";
 import "./interfaces/ERC20Interface.sol";
 import "./libraries/SafeMath.sol";
+import "./libraries/Converter.sol";
 import "./OwnerConstants.sol";
 import "./SignerRole.sol";
 
@@ -31,32 +35,35 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     using SafeMath for uint256;
 
-    address public WETH;
-    // // this is main currency for master wallet, master wallet will get always this token. normally we use USDC for this token.
-    address public _USDT;
-    // // this is okse token address, which is used for setting of user's daily level and cashback.
-    address public _OKSE;
+    // address public WETH;
+    // // // this is main currency for master wallet, master wallet will get always this token. normally we use USDC for this token.
+    // address public USDC;
+    // // // this is okse token address, which is used for setting of user's daily level and cashback.
+    // address public OKSE;
     // default market , which is used when user didn't select any market for his main market
-    address public defaultMarket;
+    // address public defaultMarket;
 
     address public swapper;
 
     // Price oracle address, which is used for verification of swapping assets amount
     address public priceOracle;
+    address public limitManager;
+    address public levelManager;
+    address public marketManager;
 
     // Governor can set followings:
     address public governorAddress; // Governance address
 
     /*** Main Actions ***/
     // user's sepnd amount in a day.
-    mapping(address => uint256) public usersSpendAmountDay;
+    // mapping(address => uint256) public usersSpendAmountDay;
     // user's spend date
     // it is needed to calculate how much assets user sold in a day.
-    mapping(address => uint256) public usersSpendTime;
-    // current user level of each user. 1~5 level enabled.
-    mapping(address => uint256) public usersLevel;
+    // mapping(address => uint256) public usersSpendTime;
+    // // current user level of each user. 1~5 level enabled.
+    // mapping(address => uint256) public usersLevel;
     // the time okse amount is updated
-    mapping(address => uint256) public usersokseUpdatedTime;
+    // mapping(address => uint256) public usersokseUpdatedTime;
     // specific user's daily spend limit.
     // this value should be zero in default.
     // if this value is not 0, then return the value and if 0, return limt for user's level.
@@ -66,10 +73,10 @@ contract OkseCard is OwnerConstants, SignerRole {
     mapping(address => mapping(address => uint256)) public usersBalances;
 
     /// @notice A list of all assets
-    address[] public allMarkets;
+    // address[] public allMarkets;
 
     // store user's main asset used when user make payment.
-    mapping(address => address) public userMainMarket;
+    // mapping(address => address) public userMainMarket;
     mapping(address => uint256) public userValidTimes;
 
     //prevent reentrancy attack
@@ -77,12 +84,12 @@ contract OkseCard is OwnerConstants, SignerRole {
     uint256 private constant _ENTERED = 2;
     uint256 private _status;
     bool private initialized;
-    mapping(uint256 => bool) public _paymentIds;
+
     //newly added fields
     // buy tx fee in usd
     uint256 public buyTxFee; // 0.7 usd
 
-    uint256 public timeDiff;
+    // uint256 public timeDiff;
     struct SignKeys {
         uint8 v;
         bytes32 r;
@@ -95,7 +102,8 @@ contract OkseCard is OwnerConstants, SignerRole {
         address userAddr;
         uint256 amount;
         uint256 validTime;
-        address signer;
+        // address signer;
+        uint256 maxAssetAmount;
     }
     // emit event
 
@@ -109,16 +117,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         address indexed previousGovernor,
         address indexed newGovernor
     );
-    event PriceOracleChanged(
-        address owner,
-        address newOracleAddress,
-        address beforePriceOracle
-    );
-    event SwapperChanged(
-        address owner,
-        address newSwapper,
-        address beforeSwapper
-    );
+    // event MarketAdded(address market);
     event MonthlyFeePaid(
         uint256 id,
         address userAddr,
@@ -126,12 +125,12 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 usdAmount
     );
     event UserDeposit(address userAddr, address market, uint256 amount);
-    event UserMainMarketChanged(
-        uint256 id,
-        address userAddr,
-        address market,
-        address beforeMarket
-    );
+    // event UserMainMarketChanged(
+    //     uint256 id,
+    //     address userAddr,
+    //     address market,
+    //     address beforeMarket
+    // );
     event UserWithdraw(
         uint256 id,
         address userAddr,
@@ -139,14 +138,16 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 amount,
         uint256 remainedBalance
     );
-    event UserLevelChanged(address userAddr, uint256 newLevel);
+    // event UserLevelChanged(address userAddr, uint256 newLevel);
     event SignerBuyGoods(
         uint256 id,
-        address relayer,
+        address signer1,
+        address signer2,
         address market,
         address userAddr,
         uint256 usdAmount
     );
+    event PriceOracleAndSwapperChanged(address priceOracle, address swapper);
 
     // verified
     /**
@@ -167,50 +168,56 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     // verified
     function initialize(
-        address _owner,
+        // address _owner,
         address _priceOracle,
-        address _financialAddress,
-        address _masterAddress,
-        address _treasuryAddress,
-        address _governorAddress,
-        address _monthlyFeeAddress,
-        address _stakeContractAddress,
+        address _limitManager,
+        address _levelManager,
+        address _marketManager,
+        // address _financialAddress,
+        // address _masterAddress,
+        // address _treasuryAddress,
+        // address _governorAddress,
+        // address _monthlyFeeAddress,
+        // address _stakeContractAddress,
         address _swapper,
         address _WETH,
-        address _usdtAddress,
+        address _usdcAddress,
         address _okseAddress
     ) public {
         require(!initialized, "ai");
-        owner = _owner;
-        _addSigner(_owner);
+        // owner = _owner;
+        // _addSigner(_owner);
         priceOracle = _priceOracle;
-        treasuryAddress = _treasuryAddress;
-        financialAddress = _financialAddress;
-        masterAddress = _masterAddress;
-        governorAddress = _governorAddress;
-        monthlyFeeAddress = _monthlyFeeAddress;
-        stakeContractAddress = _stakeContractAddress;
+        limitManager = _limitManager;
+        levelManager = _levelManager;
+        marketManager = _marketManager;
+        // treasuryAddress = _treasuryAddress;
+        // financialAddress = _financialAddress;
+        // masterAddress = _masterAddress;
+        // governorAddress = _governorAddress;
+        // monthlyFeeAddress = _monthlyFeeAddress;
+        // stakeContractAddress = _stakeContractAddress;
         swapper = _swapper;
         // levelValidationPeriod = 30 days;
-        levelValidationPeriod = 10 minutes; //for testing
+        // levelValidationPeriod = 10 minutes; //for testing
         //private variables initialize.
         _status = _NOT_ENTERED;
         //initialize OwnerConstants arrays
-        OkseStakeAmounts = [
-            1000 ether,
-            2500 ether,
-            10000 ether,
-            25000 ether,
-            100000 ether
-        ];
-        DailyLimits = [
-            100 ether,
-            250 ether,
-            500 ether,
-            2500 ether,
-            5000 ether,
-            10000 ether
-        ];
+        // OkseStakeAmounts = [
+        //     1000 ether,
+        //     2500 ether,
+        //     10000 ether,
+        //     25000 ether,
+        //     100000 ether
+        // ];
+        // DailyLimits = [
+        //     100 ether,
+        //     250 ether,
+        //     500 ether,
+        //     2500 ether,
+        //     5000 ether,
+        //     10000 ether
+        // ];
         CashBackPercents = [10, 200, 300, 400, 500, 600];
         stakePercent = 15 * (100 + 15);
         buyFeePercent = 100;
@@ -218,15 +225,15 @@ contract OkseCard is OwnerConstants, SignerRole {
         withdrawFeePercent = 10;
         monthlyFeeAmount = 6.99 ether;
         okseMonthlyProfit = 1000;
-        WETH = _WETH;
-        _USDT = _usdtAddress;
-        _OKSE = _okseAddress;
+        // WETH = _WETH;
+        // USDC = _usdcAddress;
+        // OKSE = _okseAddress;
         initialized = true;
-        addMarket(WETH);
-        addMarket(_USDT);
-        addMarket(_OKSE);
-        defaultMarket = WETH;
-        timeDiff = 4 hours;
+        // _addMarketInternal(WETH);
+        // _addMarketInternal(USDC);
+        // _addMarketInternal(OKSE);
+        // defaultMarket = WETH;
+        // timeDiff = 4 hours;
     }
 
     /// modifier functions
@@ -236,19 +243,19 @@ contract OkseCard is OwnerConstants, SignerRole {
         _;
     }
     // verified
-    modifier marketSupported(address market) {
-        bool marketExist = false;
-        for (uint256 i = 0; i < allMarkets.length; i++) {
-            if (allMarkets[i] == market) {
-                marketExist = true;
-            }
-        }
-        require(marketExist, "mns");
-        _;
-    }
-    // verified
+    // modifier marketSupported(address market) {
+    //     bool marketExist = false;
+    //     for (uint256 i = 0; i < allMarkets.length; i++) {
+    //         if (allMarkets[i] == market) {
+    //             marketExist = true;
+    //         }
+    //     }
+    //     require(marketExist, "mns");
+    //     _;
+    // }
+    // // verified
     modifier marketEnabled(address market) {
-        require(_marketEnabled[market], "mdnd");
+        require(IMarketManager(marketManager).marketEnable(market), "mdnd");
         _;
     }
     // verified
@@ -279,83 +286,97 @@ contract OkseCard is OwnerConstants, SignerRole {
         _status = _NOT_ENTERED;
     }
 
-    modifier validSignOfSigner(
-        SignData calldata sign_data,
-        SignKeys calldata sign_key
-    ) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        require(
-            isSigner(
-                ecrecover(
-                    toEthSignedMessageHash(
-                        keccak256(
-                            abi.encodePacked(
-                                this,
-                                sign_data.method,
-                                sign_data.id,
-                                sign_data.userAddr,
-                                sign_data.market,
-                                chainId,
-                                sign_data.amount,
-                                sign_data.validTime
-                            )
-                        )
-                    ),
-                    sign_key.v,
-                    sign_key.r,
-                    sign_key.s
-                )
-            ),
-            "ssst"
-        );
-        _;
-    }
+    // modifier validSignOfSigner(
+    //     SignData calldata sign_data,
+    //     SignKeys calldata sign_key
+    // ) {
+    //     // uint256 chainId;
+    //     // assembly {
+    //     //     chainId := chainid()
+    //     // }
+    //     // require(
+    //     //     isSigner(
+    //     //         ecrecover(
+    //     //             toEthSignedMessageHash(
+    //     //                 keccak256(
+    //     //                     abi.encodePacked(
+    //     //                         this,
+    //     //                         sign_data.method,
+    //     //                         sign_data.id,
+    //     //                         sign_data.userAddr,
+    //     //                         sign_data.market,
+    //     //                         chainId,
+    //     //                         sign_data.amount,
+    //     //                         sign_data.validTime,
+    //     //                         sign_data.maxAssetAmount
+    //     //                     )
+    //     //                 )
+    //     //             ),
+    //     //             sign_key.v,
+    //     //             sign_key.r,
+    //     //             sign_key.s
+    //     //         )
+    //     //     ),
+    //     //     "ssst"
+    //     // );
+    //     require(isSigner(getecrecover(sign_data, sign_key)), "ssst");
+    //     _;
+    // }
     modifier validSignOfUser(
         SignData calldata sign_data,
         SignKeys calldata sign_key
     ) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
+        // uint256 chainId;
+        // assembly {
+        //     chainId := chainid()
+        // }
+        // require(
+        //     sign_data.userAddr ==
+        //         ecrecover(
+        //             toEthSignedMessageHash(
+        //                 keccak256(
+        //                     abi.encodePacked(
+        //                         this,
+        //                         sign_data.method,
+        //                         sign_data.id,
+        //                         sign_data.userAddr,
+        //                         sign_data.market,
+        //                         chainId,
+        //                         sign_data.amount,
+        //                         sign_data.validTime
+        //                     )
+        //                 )
+        //             ),
+        //             sign_key.v,
+        //             sign_key.r,
+        //             sign_key.s
+        //         ),
+        //     "usst"
+        // );
         require(
-            sign_data.userAddr ==
-                ecrecover(
-                    toEthSignedMessageHash(
-                        keccak256(
-                            abi.encodePacked(
-                                this,
-                                sign_data.method,
-                                sign_data.id,
-                                sign_data.userAddr,
-                                sign_data.market,
-                                chainId,
-                                sign_data.amount,
-                                sign_data.validTime
-                            )
-                        )
-                    ),
-                    sign_key.v,
-                    sign_key.r,
-                    sign_key.s
-                ),
-            "usst"
+            sign_data.userAddr == getecrecover(sign_data, sign_key),
+            "ssst"
         );
         _;
     }
 
-    function getUserMainMarket(address userAddr) public view returns (address) {
-        if (userMainMarket[userAddr] == address(0)) {
-            return defaultMarket; // return default market
-        }
-        address market = userMainMarket[userAddr];
-        if (_marketEnabled[market] == false) {
-            return defaultMarket; // return default market
-        }
-        return market;
+    // function getUserMainMarket(address userAddr) public view returns (address) {
+    //     if (userMainMarket[userAddr] == address(0)) {
+    //         return defaultMarket; // return default market
+    //     }
+    //     address market = userMainMarket[userAddr];
+    //     if (marketEnabled[market] == false) {
+    //         return defaultMarket; // return default market
+    //     }
+    //     return market;
+    // }
+
+    function getUserOkseBalance(address userAddr)
+        external
+        view
+        returns (uint256)
+    {
+        return usersBalances[userAddr][IMarketManager(marketManager).OKSE()];
     }
 
     // verified
@@ -374,53 +395,47 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // verified
-    function addMarket(address market) public onlyOwner {
-        _addMarketInternal(market);
+    // function setSwapper(address _swapper) public onlyOwner {
+    // swapper = _swapper;
+    // }
+
+    // function setDefaultMarket(address market)
+    //     public
+    //     marketEnabled(market)
+    //     marketSupported(market)
+    //     onlyOwner
+    // {
+    //     defaultMarket = market;
+    // }
+
+    // verified
+    function updateSigner(address _signer, bool bAdd) public onlyGovernor {
+        if (bAdd) {
+            _addSigner(_signer);
+        } else {
+            _removeSigner(_signer);
+        }
     }
 
     // verified
-    function setPriceOracle(address _priceOracle) public onlyOwner {
-        priceOracle = _priceOracle;
-    }
-
-    // verified
-    function setSwapper(address _swapper) public onlyOwner {
-        swapper = _swapper;
-    }
-
-    function setDefaultMarket(address market)
-        public
-        marketEnabled(market)
-        marketSupported(market)
-        onlyOwner
-    {
-        defaultMarket = market;
-    }
-
-    // verified
-    function addSigner(address _signer) public onlyGovernor {
-        _addSigner(_signer);
-    }
-
-    // verified
-    function removeSigner(address _signer) public onlyGovernor {
-        _removeSigner(_signer);
-    }
+    // function removeSigner(address _signer) public onlyGovernor {
+    //     _removeSigner(_signer);
+    // }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    //returns today's spend amount
-    function getSpendAmountToday(address userAddr)
-        public
-        view
-        returns (uint256)
-    {
-        uint256 currentDate = (block.timestamp + timeDiff) / 1 days; // UTC -> PST time zone 12 PM
-        if (usersSpendTime[userAddr] != currentDate) {
-            return 0;
-        }
-        return usersSpendAmountDay[userAddr];
-    }
+    // //returns today's spend amount
+    // function getSpendAmountToday(address userAddr)
+    //     public
+    //     view
+    //     returns (uint256)
+    // {
+    //     uint256 currentDate = (block.timestamp + timeDiff) / 1 days; // UTC -> PST time zone 12 PM
+    //     if (usersSpendTime[userAddr] != currentDate) {
+    //         return 0;
+    //     }
+    //     return usersSpendAmountDay[userAddr];
+    // }
 
     function onUpdateUserBalance(
         address userAddr,
@@ -429,82 +444,85 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 beforeAmount
     ) internal returns (bool) {
         emit UserBalanceChanged(userAddr, market, amount);
-        if (market != _OKSE) return true;
-        uint256 newLevel = getLevel(usersBalances[userAddr][market]);
-        uint256 beforeLevel = getLevel(beforeAmount);
-        if (newLevel != beforeLevel)
-            usersokseUpdatedTime[userAddr] = block.timestamp;
-        if (newLevel == usersLevel[userAddr]) return true;
-        if (newLevel < usersLevel[userAddr]) {
-            usersLevel[userAddr] = newLevel;
-            emit UserLevelChanged(userAddr, newLevel);
-        } else {
-            if (
-                usersokseUpdatedTime[userAddr] + levelValidationPeriod <
-                block.timestamp
-            ) {
-                usersLevel[userAddr] = newLevel;
-                emit UserLevelChanged(userAddr, newLevel);
-            } else {
-                // do somrthing ...
-            }
-        }
-        return false;
+        if (market != IMarketManager(marketManager).OKSE()) return true;
+        return
+            ILevelManager(levelManager).updateUserLevel(userAddr, beforeAmount);
+        // uint256 newLevel = getLevel(usersBalances[userAddr][market]);
+        // uint256 beforeLevel = getLevel(beforeAmount);
+        // if (newLevel != beforeLevel)
+        //     usersokseUpdatedTime[userAddr] = block.timestamp;
+        // if (newLevel == usersLevel[userAddr]) return true;
+        // if (newLevel < usersLevel[userAddr]) {
+        //     usersLevel[userAddr] = newLevel;
+        //     emit UserLevelChanged(userAddr, newLevel);
+        // } else {
+        //     if (getLevel
+        //         usersokseUpdatedTime[userAddr] + levelValidationPeriod <
+        //         block.timestamp
+        //     ) {
+        //         usersLevel[userAddr] = newLevel;
+        //         emit UserLevelChanged(userAddr, newLevel);
+        //     } else {
+        //         // do somrthing ...
+        //     }
+        // }
+        // return false;
     }
 
-    function getUserLevel(address userAddr) public view returns (uint256) {
-        uint256 newLevel = getLevel(usersBalances[userAddr][_OKSE]);
-        if (newLevel < usersLevel[userAddr]) {
-            return newLevel;
-        } else {
-            if (
-                usersokseUpdatedTime[userAddr] + levelValidationPeriod <
-                block.timestamp
-            ) {
-                return newLevel;
-            } else {
-                // do something ...
-            }
-        }
-        return usersLevel[userAddr];
-    }
+    // function getUserLevel(address userAddr) public view returns (uint256) {
+    //     uint256 newLevel = getLevel(usersBalances[userAddr][OKSE]);
+    //     if (newLevel < usersLevel[userAddr]) {
+    //         return newLevel;
+    //     } else {
+    //         if (
+    //             usersokseUpdatedTime[userAddr] + levelValidationPeriod <
+    //             block.timestamp
+    //         ) {
+    //             return newLevel;
+    //         } else {
+    //             // do something ...
+    //         }
+    //     }
+    //     return usersLevel[userAddr];
+    // }
 
     // decimal of usdAmount is 18
-    function withinLimits(address userAddr, uint256 usdAmount)
-        public
-        view
-        returns (bool)
-    {
-        if (usdAmount <= getUserLimit(userAddr)) return true;
-        return false;
-    }
+    // function withinLimits(address userAddr, uint256 usdAmount)
+    //     public
+    //     view
+    //     returns (bool)
+    // {
+    //     if (usdAmount <= getUserLimit(userAddr)) return true;
+    //     return false;
+    // }
 
-    function getUserLimit(address userAddr) public view returns (uint256) {
-        uint256 dailyLimit = userDailyLimits[userAddr];
-        if (dailyLimit != 0) return dailyLimit;
-        uint256 userLevel = getUserLevel(userAddr);
-        return getDailyLimit(userLevel);
-    }
+    // function getUserLimit(address userAddr) public view returns (uint256) {
+    //     uint256 dailyLimit = userDailyLimits[userAddr];
+    //     if (dailyLimit != 0) return dailyLimit;
+    //     uint256 userLevel = getUserLevel(userAddr);
+    //     return getDailyLimit(userLevel);
+    // }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //verified
-    function _addMarketInternal(address assetAddr) internal {
-        for (uint256 i = 0; i < allMarkets.length; i++) {
-            require(allMarkets[i] != assetAddr, "maa");
-        }
-        allMarkets.push(assetAddr);
-        _marketEnabled[assetAddr] = true;
-    }
+    // function _addMarketInternal(address assetAddr) internal {
+    //     for (uint256 i = 0; i < allMarkets.length; i++) {
+    //         require(allMarkets[i] != assetAddr, "maa");
+    //     }
+    //     allMarkets.push(assetAddr);
+    //     marketEnabled[assetAddr] = true;
+    //     emit MarketAdded(assetAddr);
+    // }
 
-    // verified
-    /**
-     * @notice Return all of the markets
-     * @dev The automatic getter may be used to access an individual market.
-     * @return The list of market addresses
-     */
-    function getAllMarkets() public view returns (address[] memory) {
-        return allMarkets;
-    }
+    // // verified
+    // /**
+    //  * @notice Return all of the markets
+    //  * @dev The automatic getter may be used to access an individual market.
+    //  * @return The list of market addresses
+    //  */
+    // // function getAllMarkets() public view returns (address[] memory) {
+    // //     return allMarkets;
+    // // }
 
     // verified
     function deposit(address market, uint256 amount)
@@ -524,7 +542,9 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // verified
-    function depositETH() public payable marketEnabled(WETH) nonReentrant {
+    function depositETH() public payable nonReentrant {
+        address WETH = IMarketManager(marketManager).WETH();
+        require(IMarketManager(marketManager).marketEnable(WETH), "me");
         IWETH9(WETH).deposit{value: msg.value}();
         _addUserBalance(WETH, msg.sender, msg.value);
         emit UserDeposit(msg.sender, WETH, msg.value);
@@ -537,7 +557,9 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 amount
     ) internal marketEnabled(market) {
         uint256 beforeAmount = usersBalances[userAddr][market];
-        usersBalances[userAddr][market] += amount;
+        usersBalances[userAddr][market] = usersBalances[userAddr][market].add(
+            amount
+        );
         onUpdateUserBalance(
             userAddr,
             market,
@@ -555,7 +577,18 @@ contract OkseCard is OwnerConstants, SignerRole {
         bytes32 s
     ) public {
         address userAddr = msg.sender;
-        if (getUserMainMarket(userAddr) == market) return;
+
+        // SignData memory _data = SignData({
+        //     method: SET_USER_MAIN_MARKET,
+        //     id: id,
+        //     userAddr: userAddr,
+        //     market: market,
+        //     amount: uint256(0),
+        //     validTime: validTime,
+        //     maxAssetAmount: uint256(0)
+        // });
+        // SignKeys memory key = SignKeys(v,r,s);
+        // require(isSigner(getecrecover(_data, key)), "summ");
         uint256 chainId;
         assembly {
             chainId := chainid()
@@ -573,7 +606,8 @@ contract OkseCard is OwnerConstants, SignerRole {
                                 market,
                                 chainId,
                                 uint256(0),
-                                validTime
+                                validTime,
+                                uint256(0)
                             )
                         )
                     ),
@@ -584,12 +618,14 @@ contract OkseCard is OwnerConstants, SignerRole {
             ),
             "summ"
         );
-        require(_paymentIds[id] == false, "pru");
-        _paymentIds[id] = true;
+        require(signatureId[id] == false, "pru");
+        signatureId[id] = true;
         require(validTime > block.timestamp, "expired");
-        address beforeMarket = getUserMainMarket(userAddr);
-        userMainMarket[userAddr] = market;
-        emit UserMainMarketChanged(id, userAddr, market, beforeMarket);
+        // if (getUserMainMarket(userAddr) == market) return;
+        // address beforeMarket = getUserMainMarket(userAddr);
+        // userMainMarket[userAddr] = market;
+        // emit UserMainMarketChanged(id, userAddr, market, beforeMarket);
+        IMarketManager(marketManager).setUserMainMakret(userAddr, market, id);
     }
 
     // verified
@@ -597,7 +633,8 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 id,
         SignData calldata _data,
         SignKeys calldata user_key,
-        address market
+        address market,
+        uint256 maxAssetAmount
     )
         public
         nonReentrant
@@ -609,25 +646,36 @@ contract OkseCard is OwnerConstants, SignerRole {
         address userAddr = _data.userAddr;
         require(userValidTimes[userAddr] <= block.timestamp, "e");
         require(monthlyFeeAmount <= _data.amount, "over paid");
-
+        require(
+            signatureId[id] == false && _data.method == PAY_MONTHLY_FEE,
+            "pru"
+        );
+        signatureId[id] = true;
         // increase valid period
-        uint256 _tempVal;
+        // uint256 _tempVal;
         // extend user's valid time
-        uint256 _monthlyFee = getMonthlyFeeAmount(market == _OKSE);
+        uint256 _monthlyFee = getMonthlyFeeAmount(
+            market == IMarketManager(marketManager).OKSE()
+        );
 
         userValidTimes[userAddr] = block.timestamp + CARD_VALIDATION_TIME;
 
         if (stakeContractAddress != address(0)) {
-            _tempVal = (_monthlyFee * 10000) / (10000 + stakePercent);
+            _monthlyFee = (_monthlyFee * 10000) / (10000 + stakePercent);
         }
+        // else{
+        //     _tempVal = _monthlyFee;
+        // }
+
         uint256 beforeAmount = usersBalances[userAddr][market];
         calculateAmount(
             market,
             userAddr,
-            _tempVal,
+            _monthlyFee,
             monthlyFeeAddress,
             stakeContractAddress,
-            stakePercent
+            stakePercent,
+            maxAssetAmount
         );
         onUpdateUserBalance(
             userAddr,
@@ -671,7 +719,8 @@ contract OkseCard is OwnerConstants, SignerRole {
                                 market,
                                 chainId,
                                 amount,
-                                validTime
+                                validTime,
+                                uint256(0)
                             )
                         )
                     ),
@@ -682,12 +731,13 @@ contract OkseCard is OwnerConstants, SignerRole {
             ),
             "ssst"
         );
-        require(_paymentIds[id] == false, "pru");
-        _paymentIds[id] = true;
+        require(signatureId[id] == false, "pru");
+        signatureId[id] = true;
         require(validTime > block.timestamp, "expired");
         uint256 beforeAmount = usersBalances[userAddr][market];
-        require(beforeAmount >= amount, "ib");
-        usersBalances[userAddr][market] = beforeAmount - amount;
+        // require(beforeAmount >= amount, "ib");
+        usersBalances[userAddr][market] = beforeAmount.sub(amount);
+        address WETH = IMarketManager(marketManager).WETH();
         if (market == WETH) {
             IWETH9(WETH).withdraw(amount);
             if (treasuryAddress != address(0)) {
@@ -695,7 +745,10 @@ contract OkseCard is OwnerConstants, SignerRole {
                 if (feeAmount > 0) {
                     TransferHelper.safeTransferETH(treasuryAddress, feeAmount);
                 }
-                TransferHelper.safeTransferETH(msg.sender, amount - feeAmount);
+                TransferHelper.safeTransferETH(
+                    msg.sender,
+                    amount.sub(feeAmount)
+                );
             } else {
                 TransferHelper.safeTransferETH(msg.sender, amount);
             }
@@ -712,46 +765,60 @@ contract OkseCard is OwnerConstants, SignerRole {
                 TransferHelper.safeTransfer(
                     market,
                     msg.sender,
-                    amount - feeAmount
+                    amount.sub(feeAmount)
                 );
             } else {
                 TransferHelper.safeTransfer(market, msg.sender, amount);
             }
         }
-        onUpdateUserBalance(
-            userAddr,
-            market,
-            usersBalances[userAddr][market],
-            beforeAmount
-        );
-        emit UserWithdraw(
-            id,
-            userAddr,
-            market,
-            amount,
-            usersBalances[userAddr][market]
-        );
+        uint256 userBal = usersBalances[userAddr][market];
+        onUpdateUserBalance(userAddr, market, userBal, beforeAmount);
+        emit UserWithdraw(id, userAddr, market, amount, userBal);
     }
 
     // decimal of usdAmount is 18
-    function buyGoods(SignData calldata _data, SignKeys calldata signer_key)
+    function buyGoods(SignData calldata _data, SignKeys[2] calldata signer_key)
         external
         nonReentrant
         marketEnabled(_data.market)
         noExpired(_data.userAddr)
         noEmergency
-        validSignOfSigner(_data, signer_key)
     {
-        require(_paymentIds[_data.id] == false, "pru");
-        _paymentIds[_data.id] = true;
-        if (_data.market == _OKSE) {
-            require(oksePaymentEnable, "jsy");
+        address[2] memory signers = [
+            getecrecover(_data, signer_key[0]),
+            getecrecover(_data, signer_key[1])
+        ];
+        require(
+            isSigner(signers[0]) &&
+                isSigner(signers[1]) &&
+                (signers[0] != signers[1]),
+            "is"
+        );
+        require(
+            signatureId[_data.id] == false && _data.method == BUYGOODS,
+            "pru"
+        );
+        signatureId[_data.id] = true;
+        require(signer_key[0].s != signer_key[1].s, "");
+        if (_data.market == IMarketManager(marketManager).OKSE()) {
+            require(IMarketManager(marketManager).oksePaymentEnable(), "jsy");
         }
-        require(getUserMainMarket(_data.userAddr) == _data.market, "jsy2");
-        _makePayment(_data.market, _data.userAddr, _data.amount);
+        require(
+            IMarketManager(marketManager).getUserMainMarket(_data.userAddr) ==
+                _data.market,
+            "jsy2"
+        );
+        uint256 spendAmount = _makePayment(
+            _data.market,
+            _data.userAddr,
+            _data.amount,
+            _data.maxAssetAmount
+        );
+        cashBack(_data.userAddr, spendAmount);
         emit SignerBuyGoods(
             _data.id,
-            _data.signer,
+            signers[0],
+            signers[1],
             _data.market,
             _data.userAddr,
             _data.amount
@@ -764,31 +831,33 @@ contract OkseCard is OwnerConstants, SignerRole {
     function _makePayment(
         address market,
         address userAddr,
-        uint256 usdAmount
-    ) internal {
+        uint256 usdAmount,
+        uint256 maxAssetAmount
+    ) internal returns (uint256 spendAmount) {
         uint256 beforeAmount = usersBalances[userAddr][market];
-        uint256 spendAmount = calculateAmount(
+        spendAmount = calculateAmount(
             market,
             userAddr,
             usdAmount,
             masterAddress,
             treasuryAddress,
-            buyFeePercent
+            buyFeePercent,
+            maxAssetAmount
         );
+        ILimitManager(limitManager).updateUserSpendAmount(userAddr, usdAmount);
+        // uint256 currentDate = (block.timestamp + timeDiff) / 1 days; // UTC -> PST time zone 12 PM
+        // uint256 totalSpendAmount;
 
-        uint256 currentDate = (block.timestamp + timeDiff) / 1 days; // UTC -> PST time zone 12 PM
-        uint256 totalSpendAmount;
+        // if (usersSpendTime[userAddr] != currentDate) {
+        //     usersSpendTime[userAddr] = currentDate;
+        //     totalSpendAmount = usdAmount;
+        // } else {
+        //     totalSpendAmount = usersSpendAmountDay[userAddr].add(usdAmount);
+        // }
 
-        if (usersSpendTime[userAddr] != currentDate) {
-            usersSpendTime[userAddr] = currentDate;
-            totalSpendAmount = usdAmount;
-        } else {
-            totalSpendAmount = usersSpendAmountDay[userAddr] + usdAmount;
-        }
-
-        require(withinLimits(userAddr, totalSpendAmount), "odl");
-        cashBack(userAddr, spendAmount);
-        usersSpendAmountDay[userAddr] = totalSpendAmount;
+        // require(withinLimits(userAddr, totalSpendAmount), "odl");
+        // // cashBack(userAddr, spendAmount);
+        // usersSpendAmountDay[userAddr] = totalSpendAmount;
         onUpdateUserBalance(
             userAddr,
             market,
@@ -806,40 +875,42 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 usdAmount,
         address targetAddress,
         address feeAddress,
-        uint256 feePercent
+        uint256 feePercent,
+        uint256 maxAssetAmount
     ) internal returns (uint256 spendAmount) {
-        uint256 addFeeUsdAmount;
+        uint256 _amount;
+        address USDC = IMarketManager(marketManager).USDC();
         if (feeAddress != address(0)) {
-            addFeeUsdAmount =
+            _amount =
                 usdAmount +
                 (usdAmount * feePercent) /
                 10000 +
                 buyTxFee;
         } else {
-            addFeeUsdAmount = usdAmount;
+            _amount = usdAmount;
         }
-        // change addFeeUsdAmount to _USDT asset amounts
-        // uint256 assetAmountIn = getAssetAmount(market, addFeeUsdAmount);
+        // change _amount to USDC asset amounts
+        // uint256 assetAmountIn = getAssetAmount(market, _amount);
         // assetAmountIn = assetAmountIn + assetAmountIn / 10; //price tolerance = 10%
-        uint256 usdtTotalAmount = convertUsdAmountToAssetAmount(
-            addFeeUsdAmount,
-            _USDT
+        _amount = Converter.convertUsdAmountToAssetAmount(
+            _amount,
+            USDC
         );
-        if (market != _USDT) {
-            // we need to change somehting here, because if there are not pair {market, _USDT} , then we have to add another path
-            // so please check the path is exist and if no, please add market, weth, usdt to path
+        uint256 userBal = usersBalances[userAddr][market];
+        if (market != USDC) {
+            // we need to change somehting here, because if there are not pair {market, USDC} , then we have to add another path
+            // so please check the path is exist and if no, please add market, weth, usdc to path
             address[] memory path = ISwapper(swapper).getOptimumPath(
                 market,
-                _USDT
+                USDC
             );
             uint256[] memory amounts = ISwapper(swapper).getAmountsIn(
-                usdtTotalAmount,
+                _amount,
                 path
             );
-            require(amounts[0] <= usersBalances[userAddr][market], "ua");
-            usersBalances[userAddr][market] =
-                usersBalances[userAddr][market] -
-                amounts[0];
+
+            require(amounts[0] <= userBal && amounts[0] < maxAssetAmount, "ua");
+            usersBalances[userAddr][market] = userBal.sub(amounts[0]);
             TransferHelper.safeTransfer(
                 path[0],
                 ISwapper(swapper).GetReceiverAddress(path),
@@ -847,67 +918,43 @@ contract OkseCard is OwnerConstants, SignerRole {
             );
             ISwapper(swapper)._swap(amounts, path, address(this));
         } else {
-            require(usdtTotalAmount <= usersBalances[userAddr][market], "uat");
-            usersBalances[userAddr][market] =
-                usersBalances[userAddr][market] -
-                usdtTotalAmount;
+            // require(_amount <= usersBalances[userAddr][market], "uat");
+            usersBalances[userAddr][market] = userBal.sub(_amount);
         }
         require(targetAddress != address(0), "mis");
-        uint256 usdtAmount = convertUsdAmountToAssetAmount(usdAmount, _USDT);
-        require(usdtTotalAmount >= usdtAmount, "sp");
-        TransferHelper.safeTransfer(_USDT, targetAddress, usdtAmount);
-        uint256 fee = usdtTotalAmount.sub(usdtAmount);
+        uint256 usdcAmount = Converter.convertUsdAmountToAssetAmount(
+            usdAmount,
+            USDC
+        );
+        require(_amount >= usdcAmount, "sp");
+        TransferHelper.safeTransfer(USDC, targetAddress, usdcAmount);
+        uint256 fee = _amount.sub(usdcAmount);
         if (feeAddress != address(0))
-            TransferHelper.safeTransfer(_USDT, feeAddress, fee);
-        spendAmount = convertAssetAmountToUsdAmount(usdtTotalAmount, _USDT);
-    }
-
-    function convertUsdAmountToAssetAmount(
-        uint256 usdAmount,
-        address assetAddress
-    ) public view returns (uint256) {
-        ERC20Interface token = ERC20Interface(assetAddress);
-        uint256 tokenDecimal = uint256(token.decimals());
-        uint256 defaultDecimal = 18;
-        if (defaultDecimal == tokenDecimal) {
-            return usdAmount;
-        } else if (defaultDecimal > tokenDecimal) {
-            return usdAmount.div(10**(defaultDecimal.sub(tokenDecimal)));
-        } else {
-            return usdAmount.mul(10**(tokenDecimal.sub(defaultDecimal)));
-        }
-    }
-
-    function convertAssetAmountToUsdAmount(
-        uint256 assetAmount,
-        address assetAddress
-    ) public view returns (uint256) {
-        ERC20Interface token = ERC20Interface(assetAddress);
-        uint256 tokenDecimal = uint256(token.decimals());
-        uint256 defaultDecimal = 18;
-        if (defaultDecimal == tokenDecimal) {
-            return assetAmount;
-        } else if (defaultDecimal > tokenDecimal) {
-            return assetAmount.mul(10**(defaultDecimal.sub(tokenDecimal)));
-        } else {
-            return assetAmount.div(10**(tokenDecimal.sub(defaultDecimal)));
-        }
+            TransferHelper.safeTransfer(USDC, feeAddress, fee);
+        spendAmount = Converter.convertAssetAmountToUsdAmount(
+            _amount,
+            USDC
+        );
     }
 
     function cashBack(address userAddr, uint256 usdAmount) internal {
         if (!cashBackEnable) return;
-        uint256 cashBackPercent = getCashBackPercent(getUserLevel(userAddr));
-        uint256 okseAmount = getAssetAmount(
-            _OKSE,
-            (usdAmount * cashBackPercent) / 10000
+        uint256 cashBackPercent = getCashBackPercent(
+            ILevelManager(levelManager).getUserLevel(userAddr)
         );
-        // require(ERC20Interface(_OKSE).balanceOf(address(this)) >= okseAmount , "insufficient _OKSE");
-        if (usersBalances[financialAddress][_OKSE] > okseAmount) {
-            usersBalances[financialAddress][_OKSE] =
-                usersBalances[financialAddress][_OKSE] -
+        address OKSE = IMarketManager(marketManager).OKSE();
+        uint256 okseAmount = Converter.getAssetAmount(
+            OKSE,
+            (usdAmount * cashBackPercent) / 10000,
+            priceOracle
+        );
+        // require(ERC20Interface(OKSE).balanceOf(address(this)) >= okseAmount , "insufficient OKSE");
+        if (usersBalances[financialAddress][OKSE] > okseAmount) {
+            usersBalances[financialAddress][OKSE] =
+                usersBalances[financialAddress][OKSE] -
                 okseAmount;
-            //needs extra check that owner deposited how much _OKSE for cashBack
-            _addUserBalance(_OKSE, userAddr, okseAmount);
+            //needs extra check that owner deposited how much OKSE for cashBack
+            _addUserBalance(OKSE, userAddr, okseAmount);
         }
     }
 
@@ -915,105 +962,92 @@ contract OkseCard is OwnerConstants, SignerRole {
     function getUserAssetAmount(address userAddr, address market)
         public
         view
-        marketSupported(market)
         returns (uint256)
     {
         return usersBalances[userAddr][market];
     }
 
     // verified
-    function getBatchUserAssetAmount(address userAddr)
+    // function getBatchUserAssetAmount(address userAddr)
+    //     public
+    //     view
+    //     returns (
+    //         address[] memory,
+    //         uint256[] memory,
+    //         uint256[] memory
+    //     )
+    // {
+    //     uint256[] memory assets = new uint256[](allMarkets.length);
+    //     uint256[] memory decimals = new uint256[](allMarkets.length);
+
+    //     for (uint256 i = 0; i < allMarkets.length; i++) {
+    //         assets[i] = usersBalances[userAddr][allMarkets[i]];
+    //         ERC20Interface token = ERC20Interface(allMarkets[i]);
+    //         uint256 tokenDecimal = uint256(token.decimals());
+    //         decimals[i] = tokenDecimal;
+    //     }
+    //     return (allMarkets, assets, decimals);
+    // }
+
+    // function getBatchUserBalanceInUsd(address userAddr)
+    //     public
+    //     view
+    //     returns (address[] memory, uint256[] memory)
+    // {
+    //     uint256[] memory assets = new uint256[](allMarkets.length);
+
+    //     for (uint256 i = 0; i < allMarkets.length; i++) {
+    //         assets[i] = Converter.getUsdAmount(
+    //             allMarkets[i],
+    //             usersBalances[userAddr][allMarkets[i]],
+    //             priceOracle
+    //         );
+    //     }
+    //     return (allMarkets, assets);
+    // }
+
+    // function getUserBalanceInUsd(address userAddr)
+    //     public
+    //     view
+    //     returns (uint256)
+    // {
+    //     address market = getUserMainMarket(userAddr);
+    //     uint256 assetAmount = usersBalances[userAddr][market];
+    //     uint256 usdAmount = Converter.getUsdAmount(
+    //         market,
+    //         assetAmount,
+    //         priceOracle
+    //     );
+    //     return usdAmount;
+    // }
+
+    // verified
+    // function toEthSignedMessageHash(bytes32 hash)
+    //     internal
+    //     pure
+    //     returns (bytes32)
+    // {
+    //     return
+    //         keccak256(
+    //             abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
+    //         );
+    // }
+
+    // verified
+    function encodePackedData(SignData calldata _data)
         public
         view
         returns (
-            address[] memory,
-            uint256[] memory,
-            uint256[] memory
+            // bytes4 method,
+            // uint256 id,
+            // address addr,
+            // address market,
+            // uint256 amount,
+            // uint256 validTime,
+            // uint256 maxAssetAmount
+            bytes32
         )
     {
-        uint256[] memory assets = new uint256[](allMarkets.length);
-        uint256[] memory decimals = new uint256[](allMarkets.length);
-
-        for (uint256 i = 0; i < allMarkets.length; i++) {
-            assets[i] = usersBalances[userAddr][allMarkets[i]];
-            ERC20Interface token = ERC20Interface(allMarkets[i]);
-            uint256 tokenDecimal = uint256(token.decimals());
-            decimals[i] = tokenDecimal;
-        }
-        return (allMarkets, assets, decimals);
-    }
-
-    function getBatchUserBalanceInUsd(address userAddr)
-        public
-        view
-        returns (address[] memory, uint256[] memory)
-    {
-        uint256[] memory assets = new uint256[](allMarkets.length);
-
-        for (uint256 i = 0; i < allMarkets.length; i++) {
-            assets[i] = getUsdAmount(
-                allMarkets[i],
-                usersBalances[userAddr][allMarkets[i]]
-            );
-        }
-        return (allMarkets, assets);
-    }
-
-    function getUserBalanceInUsd(address userAddr)
-        public
-        view
-        returns (uint256)
-    {
-        address market = getUserMainMarket(userAddr);
-        uint256 assetAmount = usersBalances[userAddr][market];
-        uint256 usdAmount = getUsdAmount(market, assetAmount);
-        return usdAmount;
-    }
-
-    // verified not
-    //usdamount deciaml = 8
-    function getUsdAmount(address market, uint256 assetAmount)
-        public
-        view
-        returns (uint256 usdAmount)
-    {
-        uint256 usdPrice = PriceOracle(priceOracle).getUnderlyingPrice(market);
-        require(usdPrice > 0, "upe");
-        usdAmount = (assetAmount * usdPrice) / (10**8);
-    }
-
-    // verified not
-    function getAssetAmount(address market, uint256 usdAmount)
-        public
-        view
-        returns (uint256 assetAmount)
-    {
-        uint256 usdPrice = PriceOracle(priceOracle).getUnderlyingPrice(market);
-        require(usdPrice > 0, "usd price error");
-        assetAmount = (usdAmount * (10**8)) / usdPrice;
-    }
-
-    // verified
-    function toEthSignedMessageHash(bytes32 hash)
-        internal
-        pure
-        returns (bytes32)
-    {
-        return
-            keccak256(
-                abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
-            );
-    }
-
-    // verified
-    function encodePackedData(
-        bytes4 method,
-        uint256 id,
-        address addr,
-        address market,
-        uint256 amount,
-        uint256 validTime
-    ) public view returns (bytes32) {
         uint256 chainId;
         assembly {
             chainId := chainid()
@@ -1022,29 +1056,36 @@ contract OkseCard is OwnerConstants, SignerRole {
             keccak256(
                 abi.encodePacked(
                     this,
-                    method,
-                    id,
-                    addr,
-                    market,
+                    _data.method,
+                    _data.id,
+                    _data.userAddr,
+                    _data.market,
                     chainId,
-                    amount,
-                    validTime
+                    _data.amount,
+                    _data.validTime,
+                    _data.maxAssetAmount
                 )
             );
     }
 
     // verified
-    function getecrecover(
-        bytes4 method,
-        uint256 id,
-        address addr,
-        address market,
-        uint256 amount,
-        uint256 validTime,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) public view returns (address) {
+    function getecrecover(SignData calldata _data, SignKeys calldata key)
+        public
+        view
+        returns (
+            // bytes4 method,
+            // uint256 id,
+            // address addr,
+            // address market,
+            // uint256 amount,
+            // uint256 validTime,
+            // uint256 maxAssetAmount,
+            // uint8 v,
+            // bytes32 r,
+            // bytes32 s
+            address
+        )
+    {
         uint256 chainId;
         assembly {
             chainId := chainid()
@@ -1055,30 +1096,72 @@ contract OkseCard is OwnerConstants, SignerRole {
                     keccak256(
                         abi.encodePacked(
                             this,
-                            method,
-                            id,
-                            addr,
-                            market,
+                            _data.method,
+                            _data.id,
+                            _data.userAddr,
+                            _data.market,
                             chainId,
-                            amount,
-                            validTime
+                            _data.amount,
+                            _data.validTime,
+                            _data.maxAssetAmount
                         )
                     )
                 ),
-                v,
-                r,
-                s
+                key.v,
+                key.r,
+                key.s
             );
     }
 
-    function getBlockTime() public view returns (uint256) {
-        return block.timestamp;
+    // verified
+    // function addMarket(bytes calldata signData, bytes calldata keys)
+    //     public
+    //     onlyOwner
+    //     validSignOfOwner(signData, keys, "addMarket")
+    // {
+    //     (, , bytes memory params) = abi.decode(
+    //         signData,
+    //         (bytes4, uint256, bytes)
+    //     );
+    //     address market = abi.decode(params, (address));
+    //     _addMarketInternal(market);
+    // }
+
+    // verified
+    function setPriceOracleAndSwapper(
+        bytes calldata signData,
+        bytes calldata keys
+    )
+        public
+        onlyOwner
+        validSignOfOwner(signData, keys, "setPriceOracleAndSwapper")
+    {
+        (, , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, bytes)
+        );
+        (address _priceOracle, address _swapper) = abi.decode(
+            params,
+            (address, address)
+        );
+        priceOracle = _priceOracle;
+        swapper = _swapper;
+        emit PriceOracleAndSwapperChanged(priceOracle, swapper);
     }
 
-    // test function
-    function withdrawTokens(address token, address to) public onlyOwner {
-        // bellow line will be uncommented in production version
-        require(!_marketEnabled[token], "me");
+    // owner function
+    function withdrawTokens(bytes calldata signData, bytes calldata keys)
+        public
+        onlyOwner
+        validSignOfOwner(signData, keys, "withdrawTokens")
+    {
+        (, , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, bytes)
+        );
+        (address token, address to) = abi.decode(params, (address, address));
+
+        require(!IMarketManager(marketManager).marketEnable(token), "me");
         if (token == address(0)) {
             TransferHelper.safeTransferETH(to, address(this).balance);
         } else {
@@ -1091,10 +1174,19 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // verified
-    function setBuyFee(uint256 newBuyFeePercent, uint256 newBuyTxFee)
+    function setBuyFee(bytes calldata signData, bytes calldata keys)
         public
         onlyOwner
+        validSignOfOwner(signData, keys, "setBuyFee")
     {
+        (, , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, bytes)
+        );
+        (uint256 newBuyFeePercent, uint256 newBuyTxFee) = abi.decode(
+            params,
+            (uint256, uint256)
+        );
         require(newBuyFeePercent <= MAX_FEE_AMOUNT, "mpo");
         // uint256 beforePercent = buyFeePercent;
         buyFeePercent = newBuyFeePercent;
@@ -1102,17 +1194,20 @@ contract OkseCard is OwnerConstants, SignerRole {
         // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
     }
 
-    function setParams(address _newOkse, address _newUSDT)
-        external
-        onlyOwner
-        marketEnabled(_newUSDT)
-        marketEnabled(_newOkse)
-    {
-        _OKSE = _newOkse;
-        _USDT = _newUSDT;
-    }
-
-    function setTimeDiff(uint256 _value) external onlyOwner {
-        timeDiff = _value;
-    }
+    // function setParams(bytes calldata signData, bytes calldata keys)
+    //     external
+    //     onlyOwner
+    //     validSignOfOwner(signData, keys, "setParams")
+    // {
+    //     (, , bytes memory params) = abi.decode(
+    //         signData,
+    //         (bytes4, uint256, bytes)
+    //     );
+    //     (address _newOkse, address _newUSDT) = abi.decode(
+    //         params,
+    //         (address, address)
+    //     );
+    //     OKSE = _newOkse;
+    //     USDC = _newUSDT;
+    // }
 }
