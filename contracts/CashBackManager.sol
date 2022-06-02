@@ -22,12 +22,14 @@ contract CashBackManager is MultiSigOwner, Manager {
         cashBackEnable = true;
     }
 
+    ////////////////////////// Read functions /////////////////////////////////////////////////////////////
     //verified
     function getCashBackPercent(uint256 level) public view returns (uint256) {
         require(level <= 5, "level > 5");
         return CashBackPercents[level];
     }
 
+    //////////////////// Owner functions ////////////////////////////////////////////////////////////////
     // verified
     function setCashBackPercent(bytes calldata signData, bytes calldata keys)
         public

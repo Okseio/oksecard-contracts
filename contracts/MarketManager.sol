@@ -38,12 +38,7 @@ contract MarketManager is MultiSigOwner, Manager {
         require(marketEnable[market], "mdnd");
         _;
     }
-    event UserMainMarketChanged(
-        uint256 id,
-        address userAddr,
-        address market,
-        address beforeMarket
-    );
+
 
     constructor(
         address _cardContract,
@@ -71,7 +66,7 @@ contract MarketManager is MultiSigOwner, Manager {
     }
 
     ////////////////////////// Read functions /////////////////////////////////////////////////////////////
-    function isMarketExist(address market) public returns (bool) {
+    function isMarketExist(address market) public view returns (bool) {
         bool marketExist = false;
         for (uint256 i = 0; i < allMarkets.length; i++) {
             if (allMarkets[i] == market) {
@@ -98,17 +93,6 @@ contract MarketManager is MultiSigOwner, Manager {
             return defaultMarket; // return default market
         }
         return market;
-    }
-
-    function setUserMainMakret(
-        address userAddr,
-        address market,
-        uint256 id
-    ) public onlyFromCardContract {
-        if (getUserMainMarket(userAddr) == market) return;
-        address beforeMarket = getUserMainMarket(userAddr);
-        userMainMarket[userAddr] = market;
-        emit UserMainMarketChanged(id, userAddr, market, beforeMarket);
     }
 
     function getBatchUserAssetAmount(address userAddr)
@@ -168,6 +152,16 @@ contract MarketManager is MultiSigOwner, Manager {
             ICard(cardContract).priceOracle()
         );
         return usdAmount;
+    }
+
+    ///////////////// CallBack functions from card contract //////////////////////////////////////////////
+    function setUserMainMakret(
+        address userAddr,
+        address market
+    ) public onlyFromCardContract {
+        if (getUserMainMarket(userAddr) == market) return;
+        userMainMarket[userAddr] = market;
+        
     }
 
     //////////////////// Owner functions ////////////////////////////////////////////////////////////////

@@ -115,6 +115,12 @@ contract OkseCard is OwnerConstants, SignerRole {
         address userAddr,
         uint256 usdAmount
     );
+    event UserMainMarketChanged(
+        uint256 id,
+        address userAddr,
+        address market,
+        address beforeMarket
+    );
     event PriceOracleAndSwapperChanged(address priceOracle, address swapper);
 
     // verified
@@ -253,7 +259,10 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // verified
-    function updateSigner(address _signer, bool bAddOrRemove) public onlyGovernor {
+    function updateSigner(address _signer, bool bAddOrRemove)
+        public
+        onlyGovernor
+    {
         if (bAddOrRemove) {
             _addSigner(_signer);
         } else {
@@ -362,7 +371,11 @@ contract OkseCard is OwnerConstants, SignerRole {
         require(signatureId[id] == false, "pru");
         signatureId[id] = true;
         require(validTime > block.timestamp, "expired");
-        IMarketManager(marketManager).setUserMainMakret(userAddr, market, id);
+        address beforeMarket = IMarketManager(marketManager).getUserMainMarket(
+            userAddr
+        );
+        IMarketManager(marketManager).setUserMainMakret(userAddr, market);
+        emit UserMainMarketChanged(id, userAddr, market, beforeMarket);
     }
 
     // verified
@@ -679,15 +692,11 @@ contract OkseCard is OwnerConstants, SignerRole {
         return usersBalances[userAddr][market];
     }
 
-
-
     // verified
     function encodePackedData(SignData calldata _data)
         public
         view
-        returns (
-            bytes32
-        )
+        returns (bytes32)
     {
         uint256 chainId;
         assembly {
@@ -713,9 +722,7 @@ contract OkseCard is OwnerConstants, SignerRole {
     function getecrecover(SignData calldata _data, SignKeys calldata key)
         public
         view
-        returns (
-            address
-        )
+        returns (address)
     {
         uint256 chainId;
         assembly {
@@ -748,10 +755,7 @@ contract OkseCard is OwnerConstants, SignerRole {
     function setPriceOracleAndSwapper(
         bytes calldata signData,
         bytes calldata keys
-    )
-        public
-        validSignOfOwner(signData, keys, "setPriceOracleAndSwapper")
-    {
+    ) public validSignOfOwner(signData, keys, "setPriceOracleAndSwapper") {
         (, , bytes memory params) = abi.decode(
             signData,
             (bytes4, uint256, bytes)
@@ -807,5 +811,4 @@ contract OkseCard is OwnerConstants, SignerRole {
         buyTxFee = newBuyTxFee;
         // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
     }
-
 }

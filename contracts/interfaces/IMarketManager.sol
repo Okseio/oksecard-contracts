@@ -25,7 +25,6 @@ interface IMarketManager {
 
     function setUserMainMakret(
         address userAddr,
-        address market,
-        uint256 id
+        address market
     ) external;
 }
