@@ -27,12 +27,8 @@ contract MultiSigOwner {
                 method == bytes4(keccak256(bytes(functionName))),
             "sru"
         );
-        signatureId[id] = true;
-        _;
-    }
-    /// modifier functions
-    modifier onlyOwner() {
         require(isOwner(msg.sender), "on");
+        signatureId[id] = true;
         _;
     }
 
@@ -107,7 +103,7 @@ contract MultiSigOwner {
         address newOwner,
         bytes calldata signData,
         bytes calldata keys
-    ) public onlyOwner validSignOfOwner(signData, keys, "transferOwnership") {
+    ) public validSignOfOwner(signData, keys, "transferOwnership") {
         uint256 index;
         for (uint256 i = 0; i < owners.length; i++) {
             if (owners[i] == msg.sender) {

@@ -100,7 +100,6 @@ contract LevelManager is MultiSigOwner, Manager {
         bytes calldata keys
     )
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setLevelValidationPeriod")
     {
         (, , bytes memory params) = abi.decode(
@@ -114,7 +113,6 @@ contract LevelManager is MultiSigOwner, Manager {
     // verified
     function setOkseStakeAmount(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setOkseStakeAmount")
     {
         (, , bytes memory params) = abi.decode(

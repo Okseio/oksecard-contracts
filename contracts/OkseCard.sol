@@ -253,18 +253,13 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // verified
-    function updateSigner(address _signer, bool bAdd) public onlyGovernor {
-        if (bAdd) {
+    function updateSigner(address _signer, bool bAddOrRemove) public onlyGovernor {
+        if (bAddOrRemove) {
             _addSigner(_signer);
         } else {
             _removeSigner(_signer);
         }
     }
-
-    // verified
-    // function removeSigner(address _signer) public onlyGovernor {
-    //     _removeSigner(_signer);
-    // }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -755,7 +750,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         bytes calldata keys
     )
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setPriceOracleAndSwapper")
     {
         (, , bytes memory params) = abi.decode(
@@ -774,7 +768,6 @@ contract OkseCard is OwnerConstants, SignerRole {
     // owner function
     function withdrawTokens(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "withdrawTokens")
     {
         (, , bytes memory params) = abi.decode(
@@ -798,7 +791,6 @@ contract OkseCard is OwnerConstants, SignerRole {
     // verified
     function setBuyFee(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setBuyFee")
     {
         (, , bytes memory params) = abi.decode(
@@ -816,20 +808,4 @@ contract OkseCard is OwnerConstants, SignerRole {
         // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
     }
 
-    // function setParams(bytes calldata signData, bytes calldata keys)
-    //     external
-    //     onlyOwner
-    //     validSignOfOwner(signData, keys, "setParams")
-    // {
-    //     (, , bytes memory params) = abi.decode(
-    //         signData,
-    //         (bytes4, uint256, bytes)
-    //     );
-    //     (address _newOkse, address _newUSDC) = abi.decode(
-    //         params,
-    //         (address, address)
-    //     );
-    //     OKSE = _newOkse;
-    //     USDC = _newUSDC;
-    // }
 }

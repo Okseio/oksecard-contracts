@@ -31,7 +31,6 @@ contract CashBackManager is MultiSigOwner, Manager {
     // verified
     function setCashBackPercent(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setCashBackPercent")
     {
         (, , bytes memory params) = abi.decode(
@@ -48,7 +47,6 @@ contract CashBackManager is MultiSigOwner, Manager {
 
     function setCashBackEnable(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setCashBackEnable")
     {
         (, , bytes memory params) = abi.decode(

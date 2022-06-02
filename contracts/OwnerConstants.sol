@@ -81,7 +81,6 @@ contract OwnerConstants is MultiSigOwner {
     // I have to add 48 hours delay in this function
     function setManagerAddresses(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setManagerAddresses")
     {
         require(
@@ -101,7 +100,6 @@ contract OwnerConstants is MultiSigOwner {
         bytes calldata keys
     )
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "requestManagerAddressUpdate")
     {
         (, , bytes memory params) = abi.decode(
@@ -125,7 +123,6 @@ contract OwnerConstants is MultiSigOwner {
     // verified
     function setWithdrawFeePercent(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setWithdrawFeePercent")
     {
         (, , bytes memory params) = abi.decode(
@@ -143,7 +140,6 @@ contract OwnerConstants is MultiSigOwner {
     // verified
     function setMonthlyFee(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setMonthlyFee")
     {
         (, , bytes memory params) = abi.decode(
@@ -164,7 +160,6 @@ contract OwnerConstants is MultiSigOwner {
         bytes calldata keys
     )
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setStakeContractParams")
     {
         (, , bytes memory params) = abi.decode(
@@ -181,8 +176,7 @@ contract OwnerConstants is MultiSigOwner {
 
     function setEmergencyStop(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
-        validSignOfOwner(signData, keys, "setParams")
+        validSignOfOwner(signData, keys, "setEmergencyStop")
     {
         (, , bytes memory params) = abi.decode(
             signData,

@@ -170,7 +170,6 @@ contract MarketManager is MultiSigOwner, Manager {
     // verified
     function addMarket(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "addMarket")
     {
         (, , bytes memory params) = abi.decode(
@@ -183,7 +182,6 @@ contract MarketManager is MultiSigOwner, Manager {
 
     function setDefaultMarket(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setDefaultMarket")
     {
         (, , bytes memory params) = abi.decode(
@@ -199,7 +197,6 @@ contract MarketManager is MultiSigOwner, Manager {
     // verified
     function enableMarket(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "enableMarket")
     {
         (, , bytes memory params) = abi.decode(
@@ -212,7 +209,6 @@ contract MarketManager is MultiSigOwner, Manager {
 
     function setParams(bytes calldata signData, bytes calldata keys)
         external
-        onlyOwner
         validSignOfOwner(signData, keys, "setParams")
     {
         (, , bytes memory params) = abi.decode(
@@ -230,7 +226,6 @@ contract MarketManager is MultiSigOwner, Manager {
     // verified
     function setOkseAsPayment(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setOkseAsPayment")
     {
         (, , bytes memory params) = abi.decode(

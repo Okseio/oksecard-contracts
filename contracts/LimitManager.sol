@@ -96,7 +96,6 @@ contract LimitManager is MultiSigOwner, Manager {
     // verified
     function setDailyLimit(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setDailyLimit")
     {
         (, , bytes memory params) = abi.decode(
@@ -114,7 +113,6 @@ contract LimitManager is MultiSigOwner, Manager {
     // verified
     function setUserDailyLimits(bytes calldata signData, bytes calldata keys)
         public
-        onlyOwner
         validSignOfOwner(signData, keys, "setUserDailyLimits")
     {
         (, , bytes memory params) = abi.decode(
@@ -131,7 +129,6 @@ contract LimitManager is MultiSigOwner, Manager {
 
     function setTimeDiff(bytes calldata signData, bytes calldata keys)
         external
-        onlyOwner
         validSignOfOwner(signData, keys, "setTimeDiff")
     {
         (, , bytes memory params) = abi.decode(
