@@ -6,10 +6,10 @@ import "./interfaces/ERC20Interface.sol";
 import "./libraries/SafeMath.sol";
 import "./interfaces/PriceOracle.sol";
 import "./interfaces/AggregatorV3Interface.sol";
+import "./MultiSigOwner.sol";
 
-contract OkseCardPriceOracle is PriceOracle {
+contract OkseCardPriceOracle is PriceOracle, MultiSigOwner {
     using SafeMath for uint256;
-    address public admin;
 
     mapping(address => uint256) prices;
     event PricePosted(
@@ -100,7 +100,6 @@ contract OkseCardPriceOracle is PriceOracle {
             ] = 0xCcc059a1a17577676c8673952Dc02070D29e5a66; // SUSHI/USD
         }
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        admin = msg.sender;
     }
 
     //return usd price of asset , decimal is 8
@@ -146,27 +145,58 @@ contract OkseCardPriceOracle is PriceOracle {
         }
     }
 
-    function setDirectPrice(address asset, uint256 price) public {
-        require(msg.sender == admin, "only admin can set price");
-        emit PricePosted(asset, prices[asset], price, price);
-        prices[asset] = price;
-    }
-
     function assetPrices(address asset) external view returns (uint256) {
         return prices[asset];
     }
 
-    function setPriceFeed(address asset, address priceFeed) public {
-        require(msg.sender == admin, "only admin can set price");
-        emit PriceFeedChanged(asset, priceFeeds[asset], priceFeed);
-        priceFeeds[asset] = priceFeed;
+    function setDirectPrice(bytes calldata signData, bytes calldata keys)
+        external
+        validSignOfOwner(signData, keys, "setDirectPrice")
+    {
+        (, , , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, uint256, bytes)
+        );
+        (address asset, uint256 price) = abi.decode(params, (address, uint256));
+        setDirectPriceInternal(asset, price);
     }
 
-    function setAdmin(address newAdmin) external {
-        require(msg.sender == admin, "only admin can set new admin");
-        address oldAdmin = admin;
-        admin = newAdmin;
+    function setBatchDirectPrice(bytes calldata signData, bytes calldata keys)
+        external
+        validSignOfOwner(signData, keys, "setBatchDirectPrice")
+    {
+        (, , , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, uint256, bytes)
+        );
+        (address[] memory assets, uint256[] memory prices) = abi.decode(
+            params,
+            (address[], uint256[])
+        );
+        require(assets.length == prices.length, "le");
+        for (uint256 i = 0; i < assets.length; i++) {
+            setDirectPriceInternal(assets[i], prices[i]);
+        }
+    }
 
-        emit NewAdmin(oldAdmin, newAdmin);
+    function setDirectPriceInternal(address asset, uint256 price) internal {
+        emit PricePosted(asset, prices[asset], price, price);
+        prices[asset] = price;
+    }
+
+    function setPriceFeed(bytes calldata signData, bytes calldata keys)
+        external
+        validSignOfOwner(signData, keys, "setPriceFeed")
+    {
+        (, , , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, uint256, bytes)
+        );
+        (address asset, address priceFeed) = abi.decode(
+            params,
+            (address, address)
+        );
+        emit PriceFeedChanged(asset, priceFeeds[asset], priceFeed);
+        priceFeeds[asset] = priceFeed;
     }
 }
