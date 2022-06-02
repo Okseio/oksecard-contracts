@@ -46,7 +46,7 @@ contract OwnerConstants is MultiSigOwner {
     // Set whether user can use okse as payment asset. normally it is false.
     // bool public oksePaymentEnable;
     // Setting for cashback enable or disable
-    bool public cashBackEnable;
+    // bool public cashBackEnable;
     // // enable or disable for each market
     // mapping(address => bool) public marketEnabled;
     // set monthly fee of user to use card payment, unit is usd amount ( 1e18)
@@ -103,11 +103,11 @@ contract OwnerConstants is MultiSigOwner {
     //     return DailyLimits[level];
     // }
 
-    //verified
-    function getCashBackPercent(uint256 level) public view returns (uint256) {
-        require(level <= 5, "level > 5");
-        return CashBackPercents[level];
-    }
+    // //verified
+    // function getCashBackPercent(uint256 level) public view returns (uint256) {
+    //     require(level <= 5, "level > 5");
+    //     return CashBackPercents[level];
+    // }
 
     function getMonthlyFeeAmount(bool payFromOkse)
         public
@@ -220,36 +220,36 @@ contract OwnerConstants is MultiSigOwner {
     // }
 
     // verified
-    function setCashBackPercent(bytes calldata signData, bytes calldata keys)
-        public
-        onlyOwner
-        validSignOfOwner(signData, keys, "setCashBackPercent")
-    {
-        (, , bytes memory params) = abi.decode(
-            signData,
-            (bytes4, uint256, bytes)
-        );
-        (uint256 index, uint256 _amount) = abi.decode(
-            params,
-            (uint256, uint256)
-        );
-        require(index <= MAX_LEVEL, "level<=5");
-        CashBackPercents[index] = _amount;
-    }
+    // function setCashBackPercent(bytes calldata signData, bytes calldata keys)
+    //     public
+    //     onlyOwner
+    //     validSignOfOwner(signData, keys, "setCashBackPercent")
+    // {
+    //     (, , bytes memory params) = abi.decode(
+    //         signData,
+    //         (bytes4, uint256, bytes)
+    //     );
+    //     (uint256 index, uint256 _amount) = abi.decode(
+    //         params,
+    //         (uint256, uint256)
+    //     );
+    //     require(index <= MAX_LEVEL, "level<=5");
+    //     CashBackPercents[index] = _amount;
+    // }
 
     // verified
-    function setCashBackEnable(bytes calldata signData, bytes calldata keys)
-        public
-        onlyOwner
-        validSignOfOwner(signData, keys, "setCashBackEnable")
-    {
-        (, , bytes memory params) = abi.decode(
-            signData,
-            (bytes4, uint256, bytes)
-        );
-        bool newEnabled = abi.decode(params, (bool));
-        cashBackEnable = newEnabled;
-    }
+    // function setCashBackEnable(bytes calldata signData, bytes calldata keys)
+    //     public
+    //     onlyOwner
+    //     validSignOfOwner(signData, keys, "setCashBackEnable")
+    // {
+    //     (, , bytes memory params) = abi.decode(
+    //         signData,
+    //         (bytes4, uint256, bytes)
+    //     );
+    //     bool newEnabled = abi.decode(params, (bool));
+    //     cashBackEnable = newEnabled;
+    // }
 
     // verified
     // function enableMarket(bytes calldata signData, bytes calldata keys)

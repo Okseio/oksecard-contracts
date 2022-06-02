@@ -11,6 +11,7 @@ import "./interfaces/PriceOracle.sol";
 import "./interfaces/ILimitManager.sol";
 import "./interfaces/ILevelManager.sol";
 import "./interfaces/IMarketManager.sol";
+import "./interfaces/ICashBackManager.sol";
 import "./interfaces/IWETH9.sol";
 import "./interfaces/ISwapper.sol";
 import "./interfaces/ERC20Interface.sol";
@@ -50,6 +51,7 @@ contract OkseCard is OwnerConstants, SignerRole {
     address public limitManager;
     address public levelManager;
     address public marketManager;
+    address public cashbackManager;
 
     // Governor can set followings:
     address public governorAddress; // Governance address
@@ -173,6 +175,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         address _limitManager,
         address _levelManager,
         address _marketManager,
+        address _cashbackManager,
         // address _financialAddress,
         // address _masterAddress,
         // address _treasuryAddress,
@@ -180,9 +183,9 @@ contract OkseCard is OwnerConstants, SignerRole {
         // address _monthlyFeeAddress,
         // address _stakeContractAddress,
         address _swapper,
-        address _WETH,
-        address _usdcAddress,
-        address _okseAddress
+        // address _WETH,
+        // address _usdcAddress,
+        // address _okseAddress
     ) public {
         require(!initialized, "ai");
         // owner = _owner;
@@ -191,6 +194,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         limitManager = _limitManager;
         levelManager = _levelManager;
         marketManager = _marketManager;
+        cashbackManager = _cashbackManager;
         // treasuryAddress = _treasuryAddress;
         // financialAddress = _financialAddress;
         // masterAddress = _masterAddress;
@@ -218,7 +222,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         //     5000 ether,
         //     10000 ether
         // ];
-        CashBackPercents = [10, 200, 300, 400, 500, 600];
+        // CashBackPercents = [10, 200, 300, 400, 500, 600];
         stakePercent = 15 * (100 + 15);
         buyFeePercent = 100;
         buyTxFee = 0.7 ether;
@@ -856,8 +860,9 @@ contract OkseCard is OwnerConstants, SignerRole {
         // }
 
         // require(withinLimits(userAddr, totalSpendAmount), "odl");
-        // // cashBack(userAddr, spendAmount);
+        // cashBack(userAddr, spendAmount);
         // usersSpendAmountDay[userAddr] = totalSpendAmount;
+
         onUpdateUserBalance(
             userAddr,
             market,
@@ -881,21 +886,14 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 _amount;
         address USDC = IMarketManager(marketManager).USDC();
         if (feeAddress != address(0)) {
-            _amount =
-                usdAmount +
-                (usdAmount * feePercent) /
-                10000 +
-                buyTxFee;
+            _amount = usdAmount + (usdAmount * feePercent) / 10000 + buyTxFee;
         } else {
             _amount = usdAmount;
         }
         // change _amount to USDC asset amounts
         // uint256 assetAmountIn = getAssetAmount(market, _amount);
         // assetAmountIn = assetAmountIn + assetAmountIn / 10; //price tolerance = 10%
-        _amount = Converter.convertUsdAmountToAssetAmount(
-            _amount,
-            USDC
-        );
+        _amount = Converter.convertUsdAmountToAssetAmount(_amount, USDC);
         uint256 userBal = usersBalances[userAddr][market];
         if (market != USDC) {
             // we need to change somehting here, because if there are not pair {market, USDC} , then we have to add another path
@@ -931,17 +929,15 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 fee = _amount.sub(usdcAmount);
         if (feeAddress != address(0))
             TransferHelper.safeTransfer(USDC, feeAddress, fee);
-        spendAmount = Converter.convertAssetAmountToUsdAmount(
-            _amount,
-            USDC
-        );
+        spendAmount = Converter.convertAssetAmountToUsdAmount(_amount, USDC);
     }
 
     function cashBack(address userAddr, uint256 usdAmount) internal {
-        if (!cashBackEnable) return;
-        uint256 cashBackPercent = getCashBackPercent(
-            ILevelManager(levelManager).getUserLevel(userAddr)
-        );
+        if (!ICashBackManager(cashbackManager).cashBackEnable()) return;
+        uint256 cashBackPercent = ICashBackManager(cashbackManager)
+            .getCashBackPercent(
+                ILevelManager(levelManager).getUserLevel(userAddr)
+            );
         address OKSE = IMarketManager(marketManager).OKSE();
         uint256 okseAmount = Converter.getAssetAmount(
             OKSE,

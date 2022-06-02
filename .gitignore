@@ -8,3 +8,4 @@ yarn.lock
 tasks/
 test/
 typechain/
+contracts/CustomPriceFeed/
