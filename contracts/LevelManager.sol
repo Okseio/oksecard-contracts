@@ -31,6 +31,7 @@ contract LevelManager is MultiSigOwner, Manager {
         ];
     }
 
+    ////////////////////////// Read functions /////////////////////////////////////////////////////////////
     function getUserLevel(address userAddr) public view returns (uint256) {
         uint256 newLevel = getLevel(
             ICard(cardContract).getUserOkseBalance(userAddr)
@@ -65,6 +66,7 @@ contract LevelManager is MultiSigOwner, Manager {
         return 5;
     }
 
+    ///////////////// CallBack functions from card contract //////////////////////////////////////////////
     function updateUserLevel(address userAddr, uint256 beforeAmount)
         external
         onlyFromCardContract
@@ -94,14 +96,12 @@ contract LevelManager is MultiSigOwner, Manager {
         return false;
     }
 
+    //////////////////// Owner functions ////////////////////////////////////////////////////////////////
     // verified
     function setLevelValidationPeriod(
         bytes calldata signData,
         bytes calldata keys
-    )
-        public
-        validSignOfOwner(signData, keys, "setLevelValidationPeriod")
-    {
+    ) public validSignOfOwner(signData, keys, "setLevelValidationPeriod") {
         (, , bytes memory params) = abi.decode(
             signData,
             (bytes4, uint256, bytes)

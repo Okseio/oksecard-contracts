@@ -70,6 +70,7 @@ contract MarketManager is MultiSigOwner, Manager {
         emit MarketAdded(assetAddr);
     }
 
+    ////////////////////////// Read functions /////////////////////////////////////////////////////////////
     function isMarketExist(address market) public returns (bool) {
         bool marketExist = false;
         for (uint256 i = 0; i < allMarkets.length; i++) {
@@ -83,9 +84,11 @@ contract MarketManager is MultiSigOwner, Manager {
     function getBlockTime() public view returns (uint256) {
         return block.timestamp;
     }
+
     function getAllMarkets() public view returns (address[] memory) {
         return allMarkets;
     }
+
     function getUserMainMarket(address userAddr) public view returns (address) {
         if (userMainMarket[userAddr] == address(0)) {
             return defaultMarket; // return default market
@@ -167,6 +170,7 @@ contract MarketManager is MultiSigOwner, Manager {
         return usdAmount;
     }
 
+    //////////////////// Owner functions ////////////////////////////////////////////////////////////////
     // verified
     function addMarket(bytes calldata signData, bytes calldata keys)
         public

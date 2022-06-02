@@ -16,6 +16,7 @@ contract MultiSigOwner {
         bytes calldata keys,
         string memory functionName
     ) {
+        require(isOwner(msg.sender), "on");
         address signer = getSigner(signData, keys);
         require(signer != msg.sender && isOwner(signer), "is");
         (bytes4 method, uint256 id, ) = abi.decode(
@@ -27,7 +28,7 @@ contract MultiSigOwner {
                 method == bytes4(keccak256(bytes(functionName))),
             "sru"
         );
-        require(isOwner(msg.sender), "on");
+
         signatureId[id] = true;
         _;
     }
@@ -35,7 +36,7 @@ contract MultiSigOwner {
     function isOwner(address addr) public view returns (bool) {
         bool _isOwner = false;
         for (uint256 i = 0; i < owners.length; i++) {
-            if (owners[i] == msg.sender) {
+            if (owners[i] == addr) {
                 _isOwner = true;
             }
         }

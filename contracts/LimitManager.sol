@@ -40,6 +40,7 @@ contract LimitManager is MultiSigOwner, Manager {
         timeDiff = 4 hours;
     }
 
+    ////////////////////////// Read functions /////////////////////////////////////////////////////////////
     function getUserLimit(address userAddr) public view returns (uint256) {
         uint256 dailyLimit = userDailyLimits[userAddr];
         if (dailyLimit != 0) return dailyLimit;
@@ -75,6 +76,7 @@ contract LimitManager is MultiSigOwner, Manager {
         return usersSpendAmountDay[userAddr];
     }
 
+    ///////////////// CallBack functions from card contract //////////////////////////////////////////////
     function updateUserSpendAmount(address userAddr, uint256 usdAmount)
         public
         onlyFromCardContract
@@ -93,6 +95,7 @@ contract LimitManager is MultiSigOwner, Manager {
         usersSpendAmountDay[userAddr] = totalSpendAmount;
     }
 
+    //////////////////// Owner functions ////////////////////////////////////////////////////////////////
     // verified
     function setDailyLimit(bytes calldata signData, bytes calldata keys)
         public
