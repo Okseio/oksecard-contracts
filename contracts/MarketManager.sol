@@ -83,7 +83,9 @@ contract MarketManager is MultiSigOwner, Manager {
     function getBlockTime() public view returns (uint256) {
         return block.timestamp;
     }
-
+    function getAllMarkets() public view returns (address[] memory) {
+        return allMarkets;
+    }
     function getUserMainMarket(address userAddr) public view returns (address) {
         if (userMainMarket[userAddr] == address(0)) {
             return defaultMarket; // return default market
@@ -115,7 +117,6 @@ contract MarketManager is MultiSigOwner, Manager {
             uint256[] memory
         )
     {
-        address[] memory allMarkets = ICard(cardContract).allMarkets();
         uint256[] memory assets = new uint256[](allMarkets.length);
         uint256[] memory decimals = new uint256[](allMarkets.length);
 
@@ -136,7 +137,6 @@ contract MarketManager is MultiSigOwner, Manager {
         view
         returns (address[] memory, uint256[] memory)
     {
-        address[] memory allMarkets = ICard(cardContract).allMarkets();
         uint256[] memory assets = new uint256[](allMarkets.length);
 
         for (uint256 i = 0; i < allMarkets.length; i++) {
@@ -154,7 +154,7 @@ contract MarketManager is MultiSigOwner, Manager {
         view
         returns (uint256)
     {
-        address market = ICard(cardContract).getUserMainMarket(userAddr);
+        address market = getUserMainMarket(userAddr);
         uint256 assetAmount = ICard(cardContract).usersBalances(
             userAddr,
             market

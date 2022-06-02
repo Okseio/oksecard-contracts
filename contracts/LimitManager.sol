@@ -18,6 +18,9 @@ contract LimitManager is MultiSigOwner, Manager {
     // it is needed to calculate how much assets user sold in a day.
     mapping(address => uint256) public usersSpendTime;
     // unit is usd amount , so decimal is 18
+    // specific user's daily spend limit.
+    // this value should be zero in default.
+    // if this value is not 0, then return the value and if 0, return limt for user's level.
     mapping(address => uint256) public userDailyLimits;
     uint256[] public DailyLimits;
     uint256 public timeDiff;
@@ -48,12 +51,6 @@ contract LimitManager is MultiSigOwner, Manager {
     function getDailyLimit(uint256 level) public view returns (uint256) {
         require(level <= 5, "level > 5");
         return DailyLimits[level];
-    }
-
-    // verified
-    function setDailyLimit(uint256 index, uint256 _amount) public onlyOwner {
-        require(index <= MAX_LEVEL, "level<=5");
-        DailyLimits[index] = _amount;
     }
 
     // decimal of usdAmount is 18
@@ -93,8 +90,25 @@ contract LimitManager is MultiSigOwner, Manager {
         }
 
         require(withinLimits(userAddr, totalSpendAmount), "odl");
-        // cashBack(userAddr, spendAmount);
         usersSpendAmountDay[userAddr] = totalSpendAmount;
+    }
+
+    // verified
+    function setDailyLimit(bytes calldata signData, bytes calldata keys)
+        public
+        onlyOwner
+        validSignOfOwner(signData, keys, "setDailyLimit")
+    {
+        (, , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, bytes)
+        );
+        (uint256 index, uint256 _amount) = abi.decode(
+            params,
+            (uint256, uint256)
+        );
+        require(index <= MAX_LEVEL, "level<=5");
+        DailyLimits[index] = _amount;
     }
 
     // verified

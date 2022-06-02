@@ -36,13 +36,6 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     using SafeMath for uint256;
 
-    // // // this is main currency for master wallet, master wallet will get always this token. normally we use USDC for this token.
-    // address public USDC;
-    // // // this is okse token address, which is used for setting of user's daily level and cashback.
-    // address public OKSE;
-    // default market , which is used when user didn't select any market for his main market
-    // address public defaultMarket;
-
     address public swapper;
 
     // Price oracle address, which is used for verification of swapping assets amount
@@ -56,28 +49,10 @@ contract OkseCard is OwnerConstants, SignerRole {
     address public governorAddress; // Governance address
 
     /*** Main Actions ***/
-    // user's sepnd amount in a day.
-    // mapping(address => uint256) public usersSpendAmountDay;
-    // user's spend date
-    // it is needed to calculate how much assets user sold in a day.
-    // mapping(address => uint256) public usersSpendTime;
-    // // current user level of each user. 1~5 level enabled.
-    // mapping(address => uint256) public usersLevel;
-    // the time okse amount is updated
-    // mapping(address => uint256) public usersokseUpdatedTime;
-    // specific user's daily spend limit.
-    // this value should be zero in default.
-    // if this value is not 0, then return the value and if 0, return limt for user's level.
-
     // user's deposited balance.
     // user  => ( market => balances)
     mapping(address => mapping(address => uint256)) public usersBalances;
 
-    /// @notice A list of all assets
-    // address[] public allMarkets;
-
-    // store user's main asset used when user make payment.
-    // mapping(address => address) public userMainMarket;
     mapping(address => uint256) public userValidTimes;
 
     //prevent reentrancy attack
@@ -118,7 +93,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         address indexed previousGovernor,
         address indexed newGovernor
     );
-    // event MarketAdded(address market);
     event MonthlyFeePaid(
         uint256 id,
         address userAddr,
@@ -126,12 +100,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 usdAmount
     );
     event UserDeposit(address userAddr, address market, uint256 amount);
-    // event UserMainMarketChanged(
-    //     uint256 id,
-    //     address userAddr,
-    //     address market,
-    //     address beforeMarket
-    // );
     event UserWithdraw(
         uint256 id,
         address userAddr,
@@ -139,7 +107,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 amount,
         uint256 remainedBalance
     );
-    // event UserLevelChanged(address userAddr, uint256 newLevel);
     event SignerBuyGoods(
         uint256 id,
         address signer1,
@@ -175,16 +142,13 @@ contract OkseCard is OwnerConstants, SignerRole {
         address _levelManager,
         address _marketManager,
         address _cashbackManager,
-        // address _financialAddress,
-        // address _masterAddress,
-        // address _treasuryAddress,
-        // address _governorAddress,
-        // address _monthlyFeeAddress,
-        // address _stakeContractAddress,
-        address _swapper,
-        // address _WETH,
-        // address _usdcAddress,
-        // address _okseAddress
+        address _financialAddress,
+        address _masterAddress,
+        address _treasuryAddress,
+        address _governorAddress,
+        address _monthlyFeeAddress,
+        address _stakeContractAddress,
+        address _swapper
     ) public {
         require(!initialized, "ai");
         // owner = _owner;
@@ -194,48 +158,24 @@ contract OkseCard is OwnerConstants, SignerRole {
         levelManager = _levelManager;
         marketManager = _marketManager;
         cashbackManager = _cashbackManager;
-        // treasuryAddress = _treasuryAddress;
-        // financialAddress = _financialAddress;
-        // masterAddress = _masterAddress;
-        // governorAddress = _governorAddress;
-        // monthlyFeeAddress = _monthlyFeeAddress;
-        // stakeContractAddress = _stakeContractAddress;
+        treasuryAddress = _treasuryAddress;
+        financialAddress = _financialAddress;
+        masterAddress = _masterAddress;
+        governorAddress = _governorAddress;
+        monthlyFeeAddress = _monthlyFeeAddress;
+        stakeContractAddress = _stakeContractAddress;
         swapper = _swapper;
-        // levelValidationPeriod = 30 days;
-        // levelValidationPeriod = 10 minutes; //for testing
         //private variables initialize.
         _status = _NOT_ENTERED;
         //initialize OwnerConstants arrays
-        // OkseStakeAmounts = [
-        //     1000 ether,
-        //     2500 ether,
-        //     10000 ether,
-        //     25000 ether,
-        //     100000 ether
-        // ];
-        // DailyLimits = [
-        //     100 ether,
-        //     250 ether,
-        //     500 ether,
-        //     2500 ether,
-        //     5000 ether,
-        //     10000 ether
-        // ];
-        // CashBackPercents = [10, 200, 300, 400, 500, 600];
+
         stakePercent = 15 * (100 + 15);
         buyFeePercent = 100;
         buyTxFee = 0.7 ether;
         withdrawFeePercent = 10;
         monthlyFeeAmount = 6.99 ether;
         okseMonthlyProfit = 1000;
-        // WETH = _WETH;
-        // USDC = _usdcAddress;
-        // OKSE = _okseAddress;
         initialized = true;
-        // _addMarketInternal(WETH);
-        // _addMarketInternal(USDC);
-        // _addMarketInternal(OKSE);
-        // defaultMarket = WETH;
         // timeDiff = 4 hours;
     }
 
@@ -245,17 +185,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         require(_msgSender() == governorAddress, "og");
         _;
     }
-    // verified
-    // modifier marketSupported(address market) {
-    //     bool marketExist = false;
-    //     for (uint256 i = 0; i < allMarkets.length; i++) {
-    //         if (allMarkets[i] == market) {
-    //             marketExist = true;
-    //         }
-    //     }
-    //     require(marketExist, "mns");
-    //     _;
-    // }
     // // verified
     modifier marketEnabled(address market) {
         require(IMarketManager(marketManager).marketEnable(market), "mdnd");
@@ -289,90 +218,16 @@ contract OkseCard is OwnerConstants, SignerRole {
         _status = _NOT_ENTERED;
     }
 
-    // modifier validSignOfSigner(
-    //     SignData calldata sign_data,
-    //     SignKeys calldata sign_key
-    // ) {
-    //     // uint256 chainId;
-    //     // assembly {
-    //     //     chainId := chainid()
-    //     // }
-    //     // require(
-    //     //     isSigner(
-    //     //         ecrecover(
-    //     //             toEthSignedMessageHash(
-    //     //                 keccak256(
-    //     //                     abi.encodePacked(
-    //     //                         this,
-    //     //                         sign_data.method,
-    //     //                         sign_data.id,
-    //     //                         sign_data.userAddr,
-    //     //                         sign_data.market,
-    //     //                         chainId,
-    //     //                         sign_data.amount,
-    //     //                         sign_data.validTime,
-    //     //                         sign_data.maxAssetAmount
-    //     //                     )
-    //     //                 )
-    //     //             ),
-    //     //             sign_key.v,
-    //     //             sign_key.r,
-    //     //             sign_key.s
-    //     //         )
-    //     //     ),
-    //     //     "ssst"
-    //     // );
-    //     require(isSigner(getecrecover(sign_data, sign_key)), "ssst");
-    //     _;
-    // }
     modifier validSignOfUser(
         SignData calldata sign_data,
         SignKeys calldata sign_key
     ) {
-        // uint256 chainId;
-        // assembly {
-        //     chainId := chainid()
-        // }
-        // require(
-        //     sign_data.userAddr ==
-        //         ecrecover(
-        //             toEthSignedMessageHash(
-        //                 keccak256(
-        //                     abi.encodePacked(
-        //                         this,
-        //                         sign_data.method,
-        //                         sign_data.id,
-        //                         sign_data.userAddr,
-        //                         sign_data.market,
-        //                         chainId,
-        //                         sign_data.amount,
-        //                         sign_data.validTime
-        //                     )
-        //                 )
-        //             ),
-        //             sign_key.v,
-        //             sign_key.r,
-        //             sign_key.s
-        //         ),
-        //     "usst"
-        // );
         require(
             sign_data.userAddr == getecrecover(sign_data, sign_key),
             "ssst"
         );
         _;
     }
-
-    // function getUserMainMarket(address userAddr) public view returns (address) {
-    //     if (userMainMarket[userAddr] == address(0)) {
-    //         return defaultMarket; // return default market
-    //     }
-    //     address market = userMainMarket[userAddr];
-    //     if (marketEnabled[market] == false) {
-    //         return defaultMarket; // return default market
-    //     }
-    //     return market;
-    // }
 
     function getUserOkseBalance(address userAddr)
         external
@@ -398,20 +253,6 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // verified
-    // function setSwapper(address _swapper) public onlyOwner {
-    // swapper = _swapper;
-    // }
-
-    // function setDefaultMarket(address market)
-    //     public
-    //     marketEnabled(market)
-    //     marketSupported(market)
-    //     onlyOwner
-    // {
-    //     defaultMarket = market;
-    // }
-
-    // verified
     function updateSigner(address _signer, bool bAdd) public onlyGovernor {
         if (bAdd) {
             _addSigner(_signer);
@@ -427,19 +268,6 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // //returns today's spend amount
-    // function getSpendAmountToday(address userAddr)
-    //     public
-    //     view
-    //     returns (uint256)
-    // {
-    //     uint256 currentDate = (block.timestamp + timeDiff) / 1 days; // UTC -> PST time zone 12 PM
-    //     if (usersSpendTime[userAddr] != currentDate) {
-    //         return 0;
-    //     }
-    //     return usersSpendAmountDay[userAddr];
-    // }
-
     function onUpdateUserBalance(
         address userAddr,
         address market,
@@ -450,82 +278,9 @@ contract OkseCard is OwnerConstants, SignerRole {
         if (market != IMarketManager(marketManager).OKSE()) return true;
         return
             ILevelManager(levelManager).updateUserLevel(userAddr, beforeAmount);
-        // uint256 newLevel = getLevel(usersBalances[userAddr][market]);
-        // uint256 beforeLevel = getLevel(beforeAmount);
-        // if (newLevel != beforeLevel)
-        //     usersokseUpdatedTime[userAddr] = block.timestamp;
-        // if (newLevel == usersLevel[userAddr]) return true;
-        // if (newLevel < usersLevel[userAddr]) {
-        //     usersLevel[userAddr] = newLevel;
-        //     emit UserLevelChanged(userAddr, newLevel);
-        // } else {
-        //     if (getLevel
-        //         usersokseUpdatedTime[userAddr] + levelValidationPeriod <
-        //         block.timestamp
-        //     ) {
-        //         usersLevel[userAddr] = newLevel;
-        //         emit UserLevelChanged(userAddr, newLevel);
-        //     } else {
-        //         // do somrthing ...
-        //     }
-        // }
-        // return false;
     }
 
-    // function getUserLevel(address userAddr) public view returns (uint256) {
-    //     uint256 newLevel = getLevel(usersBalances[userAddr][OKSE]);
-    //     if (newLevel < usersLevel[userAddr]) {
-    //         return newLevel;
-    //     } else {
-    //         if (
-    //             usersokseUpdatedTime[userAddr] + levelValidationPeriod <
-    //             block.timestamp
-    //         ) {
-    //             return newLevel;
-    //         } else {
-    //             // do something ...
-    //         }
-    //     }
-    //     return usersLevel[userAddr];
-    // }
-
-    // decimal of usdAmount is 18
-    // function withinLimits(address userAddr, uint256 usdAmount)
-    //     public
-    //     view
-    //     returns (bool)
-    // {
-    //     if (usdAmount <= getUserLimit(userAddr)) return true;
-    //     return false;
-    // }
-
-    // function getUserLimit(address userAddr) public view returns (uint256) {
-    //     uint256 dailyLimit = userDailyLimits[userAddr];
-    //     if (dailyLimit != 0) return dailyLimit;
-    //     uint256 userLevel = getUserLevel(userAddr);
-    //     return getDailyLimit(userLevel);
-    // }
-
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    //verified
-    // function _addMarketInternal(address assetAddr) internal {
-    //     for (uint256 i = 0; i < allMarkets.length; i++) {
-    //         require(allMarkets[i] != assetAddr, "maa");
-    //     }
-    //     allMarkets.push(assetAddr);
-    //     marketEnabled[assetAddr] = true;
-    //     emit MarketAdded(assetAddr);
-    // }
-
-    // // verified
-    // /**
-    //  * @notice Return all of the markets
-    //  * @dev The automatic getter may be used to access an individual market.
-    //  * @return The list of market addresses
-    //  */
-    // // function getAllMarkets() public view returns (address[] memory) {
-    // //     return allMarkets;
-    // // }
 
     // verified
     function deposit(address market, uint256 amount)
@@ -580,18 +335,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         bytes32 s
     ) public {
         address userAddr = msg.sender;
-
-        // SignData memory _data = SignData({
-        //     method: SET_USER_MAIN_MARKET,
-        //     id: id,
-        //     userAddr: userAddr,
-        //     market: market,
-        //     amount: uint256(0),
-        //     validTime: validTime,
-        //     maxAssetAmount: uint256(0)
-        // });
-        // SignKeys memory key = SignKeys(v,r,s);
-        // require(isSigner(getecrecover(_data, key)), "summ");
         uint256 chainId;
         assembly {
             chainId := chainid()
@@ -624,10 +367,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         require(signatureId[id] == false, "pru");
         signatureId[id] = true;
         require(validTime > block.timestamp, "expired");
-        // if (getUserMainMarket(userAddr) == market) return;
-        // address beforeMarket = getUserMainMarket(userAddr);
-        // userMainMarket[userAddr] = market;
-        // emit UserMainMarketChanged(id, userAddr, market, beforeMarket);
         IMarketManager(marketManager).setUserMainMakret(userAddr, market, id);
     }
 
@@ -655,7 +394,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         );
         signatureId[id] = true;
         // increase valid period
-        // uint256 _tempVal;
         // extend user's valid time
         uint256 _monthlyFee = getMonthlyFeeAmount(
             market == IMarketManager(marketManager).OKSE()
@@ -666,9 +404,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         if (stakeContractAddress != address(0)) {
             _monthlyFee = (_monthlyFee * 10000) / (10000 + stakePercent);
         }
-        // else{
-        //     _tempVal = _monthlyFee;
-        // }
 
         uint256 beforeAmount = usersBalances[userAddr][market];
         calculateAmount(
@@ -848,19 +583,6 @@ contract OkseCard is OwnerConstants, SignerRole {
             maxAssetAmount
         );
         ILimitManager(limitManager).updateUserSpendAmount(userAddr, usdAmount);
-        // uint256 currentDate = (block.timestamp + timeDiff) / 1 days; // UTC -> PST time zone 12 PM
-        // uint256 totalSpendAmount;
-
-        // if (usersSpendTime[userAddr] != currentDate) {
-        //     usersSpendTime[userAddr] = currentDate;
-        //     totalSpendAmount = usdAmount;
-        // } else {
-        //     totalSpendAmount = usersSpendAmountDay[userAddr].add(usdAmount);
-        // }
-
-        // require(withinLimits(userAddr, totalSpendAmount), "odl");
-        // cashBack(userAddr, spendAmount);
-        // usersSpendAmountDay[userAddr] = totalSpendAmount;
 
         onUpdateUserBalance(
             userAddr,
@@ -962,84 +684,13 @@ contract OkseCard is OwnerConstants, SignerRole {
         return usersBalances[userAddr][market];
     }
 
-    // verified
-    // function getBatchUserAssetAmount(address userAddr)
-    //     public
-    //     view
-    //     returns (
-    //         address[] memory,
-    //         uint256[] memory,
-    //         uint256[] memory
-    //     )
-    // {
-    //     uint256[] memory assets = new uint256[](allMarkets.length);
-    //     uint256[] memory decimals = new uint256[](allMarkets.length);
 
-    //     for (uint256 i = 0; i < allMarkets.length; i++) {
-    //         assets[i] = usersBalances[userAddr][allMarkets[i]];
-    //         ERC20Interface token = ERC20Interface(allMarkets[i]);
-    //         uint256 tokenDecimal = uint256(token.decimals());
-    //         decimals[i] = tokenDecimal;
-    //     }
-    //     return (allMarkets, assets, decimals);
-    // }
-
-    // function getBatchUserBalanceInUsd(address userAddr)
-    //     public
-    //     view
-    //     returns (address[] memory, uint256[] memory)
-    // {
-    //     uint256[] memory assets = new uint256[](allMarkets.length);
-
-    //     for (uint256 i = 0; i < allMarkets.length; i++) {
-    //         assets[i] = Converter.getUsdAmount(
-    //             allMarkets[i],
-    //             usersBalances[userAddr][allMarkets[i]],
-    //             priceOracle
-    //         );
-    //     }
-    //     return (allMarkets, assets);
-    // }
-
-    // function getUserBalanceInUsd(address userAddr)
-    //     public
-    //     view
-    //     returns (uint256)
-    // {
-    //     address market = getUserMainMarket(userAddr);
-    //     uint256 assetAmount = usersBalances[userAddr][market];
-    //     uint256 usdAmount = Converter.getUsdAmount(
-    //         market,
-    //         assetAmount,
-    //         priceOracle
-    //     );
-    //     return usdAmount;
-    // }
-
-    // verified
-    // function toEthSignedMessageHash(bytes32 hash)
-    //     internal
-    //     pure
-    //     returns (bytes32)
-    // {
-    //     return
-    //         keccak256(
-    //             abi.encodePacked("\x19Ethereum Signed Message:\n32", hash)
-    //         );
-    // }
 
     // verified
     function encodePackedData(SignData calldata _data)
         public
         view
         returns (
-            // bytes4 method,
-            // uint256 id,
-            // address addr,
-            // address market,
-            // uint256 amount,
-            // uint256 validTime,
-            // uint256 maxAssetAmount
             bytes32
         )
     {
@@ -1068,16 +719,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         public
         view
         returns (
-            // bytes4 method,
-            // uint256 id,
-            // address addr,
-            // address market,
-            // uint256 amount,
-            // uint256 validTime,
-            // uint256 maxAssetAmount,
-            // uint8 v,
-            // bytes32 r,
-            // bytes32 s
             address
         )
     {
@@ -1107,20 +748,6 @@ contract OkseCard is OwnerConstants, SignerRole {
                 key.s
             );
     }
-
-    // verified
-    // function addMarket(bytes calldata signData, bytes calldata keys)
-    //     public
-    //     onlyOwner
-    //     validSignOfOwner(signData, keys, "addMarket")
-    // {
-    //     (, , bytes memory params) = abi.decode(
-    //         signData,
-    //         (bytes4, uint256, bytes)
-    //     );
-    //     address market = abi.decode(params, (address));
-    //     _addMarketInternal(market);
-    // }
 
     // verified
     function setPriceOracleAndSwapper(

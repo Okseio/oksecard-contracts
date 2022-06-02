@@ -14,11 +14,12 @@ contract CashBackManager is MultiSigOwner, Manager {
     uint256 public constant MAX_LEVEL = 5;
     // Setting for cashback enable or disable
     bool public cashBackEnable;
-    // uint256[] public DailyLimits;
+    // cashback percent for each level
     uint256[] public CashBackPercents;
 
     constructor(address _cardContract) Manager(_cardContract) {
         CashBackPercents = [10, 200, 300, 400, 500, 600];
+        cashBackEnable = true;
     }
 
     //verified

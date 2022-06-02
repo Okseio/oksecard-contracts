@@ -11,7 +11,7 @@ contract PancakeSwapper {
   // factory address for AMM dex, normally we use spookyswap on fantom chain.
   address public factory;
   address public constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-  address public constant USDC = 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56;
+  address public constant BUSD = 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56;
   address public constant OKSE = 0x5A41F637C3f7553dBa6dDC2D3cA92641096577ea;
 
   constructor(address _factory) {
@@ -66,12 +66,12 @@ contract PancakeSwapper {
     view
     returns (address[] memory path)
   {
-    if (token0 == OKSE && token1 == USDC) {
-      //OKSE-USDC pair
+    if (token0 == OKSE && token1 == BUSD) {
+      //OKSE-BUSD pair
       path = new address[](3);
       path[0] = OKSE;
       path[1] = WBNB;
-      path[2] = USDC;
+      path[2] = BUSD;
     } else {
       path = new address[](2);
       path[0] = token0;

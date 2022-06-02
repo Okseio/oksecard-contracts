@@ -78,6 +78,18 @@ contract MultiSigOwner {
             );
     }
 
+    function encodePackedData(bytes calldata _data)
+        public
+        view
+        returns (bytes32)
+    {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
+        return keccak256(abi.encodePacked(this, chainId, _data));
+    }
+
     function toEthSignedMessageHash(bytes32 hash)
         internal
         pure

@@ -43,7 +43,7 @@ contract OkseCardPriceOracle is PriceOracle {
             ] = 0x51597f405303C4377E36123cBc172b13269EA163; // USDC/USD
             priceFeeds[
                 0x55d398326f99059fF775485246999027B3197955
-            ] = 0xB97Ad0E74fa7d920791E90258A6E2085088b4320; // USDC/USD
+            ] = 0xB97Ad0E74fa7d920791E90258A6E2085088b4320; // USDT/USD
             priceFeeds[
                 0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56
             ] = 0xcBb98864Ef56E9042e7d2efef76141f15731B82f; // BUSD/USD
@@ -64,7 +64,7 @@ contract OkseCardPriceOracle is PriceOracle {
             ] = 0xfE4A8cc5b5B2366C1B58Bea3858e81843581b2F7; // USDC/USD
             priceFeeds[
                 0xc2132D05D31c914a87C6611C10748AEb04B58e8F
-            ] = 0x0A6513e40db6EB1b165753AD52E80663aeA50545; // USDC/USD
+            ] = 0x0A6513e40db6EB1b165753AD52E80663aeA50545; // USDT/USD
             priceFeeds[
                 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6
             ] = 0xDE31F8bFBD8c84b5360CFACCa3539B938dd78ae6; // WBTC/USD
@@ -88,7 +88,7 @@ contract OkseCardPriceOracle is PriceOracle {
             ] = 0x2553f4eeb82d5A26427b8d1106C51499CBa5D99c; // USDC/USD
             priceFeeds[
                 0x049d68029688eAbF473097a2fC38ef61633A3C7A
-            ] = 0xF64b636c5dFe1d3555A847341cDC449f612307d0; // USDC/USD
+            ] = 0xF64b636c5dFe1d3555A847341cDC449f612307d0; // fUSDT/USD
             priceFeeds[
                 0x321162Cd933E2Be498Cd2267a90534A804051b11
             ] = 0x8e94C22142F4A64b99022ccDd994f4e9EC86E4B4; // WBTC/USD

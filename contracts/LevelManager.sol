@@ -11,7 +11,7 @@ contract LevelManager is MultiSigOwner, Manager {
     // current user level of each user. 1~5 level enabled.
     mapping(address => uint256) public usersLevel;
     // the time okse amount is updated
-    mapping(address => uint256) public usersokseUpdatedTime;
+    mapping(address => uint256) public usersOkseUpdatedTime;
     // this is validation period after user change his okse balance for this contract, normally is 30 days. we set 10 mnutes for testing.
     uint256 public levelValidationPeriod;
     // daily limit contants
@@ -39,7 +39,7 @@ contract LevelManager is MultiSigOwner, Manager {
             return newLevel;
         } else {
             if (
-                usersokseUpdatedTime[userAddr] + levelValidationPeriod <
+                usersOkseUpdatedTime[userAddr] + levelValidationPeriod <
                 block.timestamp
             ) {
                 return newLevel;
@@ -75,14 +75,14 @@ contract LevelManager is MultiSigOwner, Manager {
         );
         uint256 beforeLevel = getLevel(beforeAmount);
         if (newLevel != beforeLevel)
-            usersokseUpdatedTime[userAddr] = block.timestamp;
+            usersOkseUpdatedTime[userAddr] = block.timestamp;
         if (newLevel == usersLevel[userAddr]) return true;
         if (newLevel < usersLevel[userAddr]) {
             usersLevel[userAddr] = newLevel;
             emit UserLevelChanged(userAddr, newLevel);
         } else {
             if (
-                usersokseUpdatedTime[userAddr] + levelValidationPeriod <
+                usersOkseUpdatedTime[userAddr] + levelValidationPeriod <
                 block.timestamp
             ) {
                 usersLevel[userAddr] = newLevel;
