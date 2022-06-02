@@ -6,11 +6,13 @@ contract MultiSigOwner {
     address[] public owners;
     mapping(uint256 => bool) public signatureId;
     bool private initialized;
+    uint256 signValidTime;
     // events
     event OwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner
     );
+    event SignValidTimeChanged(uint256 newValue);
     modifier validSignOfOwner(
         bytes calldata signData,
         bytes calldata keys,
@@ -19,16 +21,16 @@ contract MultiSigOwner {
         require(isOwner(msg.sender), "on");
         address signer = getSigner(signData, keys);
         require(signer != msg.sender && isOwner(signer), "is");
-        (bytes4 method, uint256 id, ) = abi.decode(
+        (bytes4 method, uint256 id, uint256 validTime, ) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         require(
             signatureId[id] == false &&
                 method == bytes4(keccak256(bytes(functionName))),
             "sru"
         );
-
+        require(validTime > block.timestamp, "ep");
         signatureId[id] = true;
         _;
     }
@@ -48,6 +50,7 @@ contract MultiSigOwner {
     function initializeOwners(address[3] memory _owners) public {
         require(!initialized, "ai");
         owners = [_owners[0], _owners[1], _owners[2]];
+        signValidTime = 1 days;
         initialized = true;
     }
 
@@ -100,11 +103,15 @@ contract MultiSigOwner {
 
     // Set functions
     // verified
-    function transferOwnership(
-        address newOwner,
-        bytes calldata signData,
-        bytes calldata keys
-    ) public validSignOfOwner(signData, keys, "transferOwnership") {
+    function transferOwnership(bytes calldata signData, bytes calldata keys)
+        public
+        validSignOfOwner(signData, keys, "transferOwnership")
+    {
+        (, , , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, uint256, bytes)
+        );
+        address newOwner = abi.decode(params, (address));
         uint256 index;
         for (uint256 i = 0; i < owners.length; i++) {
             if (owners[i] == msg.sender) {
@@ -114,5 +121,18 @@ contract MultiSigOwner {
         address oldOwner = owners[index];
         owners[index] = newOwner;
         emit OwnershipTransferred(oldOwner, newOwner);
+    }
+
+    function setSignValidTime(bytes calldata signData, bytes calldata keys)
+        public
+        validSignOfOwner(signData, keys, "setSignValidTime")
+    {
+        (, , , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, uint256, bytes)
+        );
+        uint256 newValue = abi.decode(params, (uint256));
+        signValidTime = newValue;
+        emit SignValidTimeChanged(signValidTime);
     }
 }

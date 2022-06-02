@@ -61,10 +61,6 @@ contract OkseCard is OwnerConstants, SignerRole {
     uint256 private _status;
     bool private initialized;
 
-    //newly added fields
-    // buy tx fee in usd
-    uint256 public buyTxFee; // 0.7 usd
-
     // uint256 public timeDiff;
     struct SignKeys {
         uint8 v;
@@ -122,6 +118,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         address beforeMarket
     );
     event PriceOracleAndSwapperChanged(address priceOracle, address swapper);
+    event WithdrawTokens(address token, address to, uint256 amount);
 
     // verified
     /**
@@ -232,6 +229,10 @@ contract OkseCard is OwnerConstants, SignerRole {
             sign_data.userAddr == getecrecover(sign_data, sign_key),
             "ssst"
         );
+        _;
+    }
+    modifier noEmergency() {
+        require(!IMarketManager(marketManager).emergencyStop(), "stopped");
         _;
     }
 
@@ -756,9 +757,9 @@ contract OkseCard is OwnerConstants, SignerRole {
         bytes calldata signData,
         bytes calldata keys
     ) public validSignOfOwner(signData, keys, "setPriceOracleAndSwapper") {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (address _priceOracle, address _swapper) = abi.decode(
             params,
@@ -774,41 +775,21 @@ contract OkseCard is OwnerConstants, SignerRole {
         public
         validSignOfOwner(signData, keys, "withdrawTokens")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (address token, address to) = abi.decode(params, (address, address));
 
-        require(!IMarketManager(marketManager).marketEnable(token), "me");
+        require(!IMarketManager(marketManager).isMarketExist(token), "me");
+        uint256 amount;
         if (token == address(0)) {
-            TransferHelper.safeTransferETH(to, address(this).balance);
+            amount = address(this).balance;
+            TransferHelper.safeTransferETH(to, amount);
         } else {
-            TransferHelper.safeTransfer(
-                token,
-                to,
-                ERC20Interface(token).balanceOf(address(this))
-            );
+            amount = ERC20Interface(token).balanceOf(address(this));
+            TransferHelper.safeTransfer(token, to, amount);
         }
-    }
-
-    // verified
-    function setBuyFee(bytes calldata signData, bytes calldata keys)
-        public
-        validSignOfOwner(signData, keys, "setBuyFee")
-    {
-        (, , bytes memory params) = abi.decode(
-            signData,
-            (bytes4, uint256, bytes)
-        );
-        (uint256 newBuyFeePercent, uint256 newBuyTxFee) = abi.decode(
-            params,
-            (uint256, uint256)
-        );
-        require(newBuyFeePercent <= MAX_FEE_AMOUNT, "mpo");
-        // uint256 beforePercent = buyFeePercent;
-        buyFeePercent = newBuyFeePercent;
-        buyTxFee = newBuyTxFee;
-        // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
+        emit WithdrawTokens(token, to, amount);
     }
 }

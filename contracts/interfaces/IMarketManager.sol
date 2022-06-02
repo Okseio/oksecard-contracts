@@ -12,9 +12,11 @@ interface IMarketManager {
 
     function oksePaymentEnable() external view returns (bool);
 
-    function allMarkets() external view returns (address[] memory);
+    function emergencyStop() external view returns (bool);
 
     function marketEnable(address market) external view returns (bool);
+
+    function isMarketExist(address market) external view returns (bool);
 
     function userMainMarket(address userAddr) external view returns (address);
 
@@ -23,8 +25,5 @@ interface IMarketManager {
         view
         returns (address);
 
-    function setUserMainMakret(
-        address userAddr,
-        address market
-    ) external;
+    function setUserMainMakret(address userAddr, address market) external;
 }

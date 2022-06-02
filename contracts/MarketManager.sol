@@ -19,7 +19,6 @@ contract MarketManager is MultiSigOwner, Manager {
     mapping(address => bool) public marketEnable;
     // store user's main asset used when user make payment.
     mapping(address => address) public userMainMarket;
-    event MarketAdded(address market);
 
     address public WETH;
     // // this is main currency for master wallet, master wallet will get always this token. normally we use USDC for this token.
@@ -28,6 +27,7 @@ contract MarketManager is MultiSigOwner, Manager {
     address public OKSE;
     // Set whether user can use okse as payment asset. normally it is false.
     bool public oksePaymentEnable;
+    bool public emergencyStop;
 
     modifier marketSupported(address market) {
         require(isMarketExist(market), "mns");
@@ -38,7 +38,13 @@ contract MarketManager is MultiSigOwner, Manager {
         require(marketEnable[market], "mdnd");
         _;
     }
-
+    
+    event MarketAdded(address market);
+    event DefaultMarketChanged(address newMarket);
+    event TokenAddressChanged(address okse, address usdc);
+    event EmergencyStopChanged(bool emergencyStop);
+    event OkseAsPaymentChanged(bool oksePaymentEnable);
+    event MarketEnableChanged(address market, bool bEnable);
 
     constructor(
         address _cardContract,
@@ -155,13 +161,12 @@ contract MarketManager is MultiSigOwner, Manager {
     }
 
     ///////////////// CallBack functions from card contract //////////////////////////////////////////////
-    function setUserMainMakret(
-        address userAddr,
-        address market
-    ) public onlyFromCardContract {
+    function setUserMainMakret(address userAddr, address market)
+        public
+        onlyFromCardContract
+    {
         if (getUserMainMarket(userAddr) == market) return;
         userMainMarket[userAddr] = market;
-        
     }
 
     //////////////////// Owner functions ////////////////////////////////////////////////////////////////
@@ -170,9 +175,9 @@ contract MarketManager is MultiSigOwner, Manager {
         public
         validSignOfOwner(signData, keys, "addMarket")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         address market = abi.decode(params, (address));
         _addMarketInternal(market);
@@ -182,14 +187,15 @@ contract MarketManager is MultiSigOwner, Manager {
         public
         validSignOfOwner(signData, keys, "setDefaultMarket")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         address market = abi.decode(params, (address));
         require(isMarketExist(market), "me");
         require(marketEnable[market], "mn");
         defaultMarket = market;
+        emit DefaultMarketChanged(market);
     }
 
     // verified
@@ -197,21 +203,22 @@ contract MarketManager is MultiSigOwner, Manager {
         public
         validSignOfOwner(signData, keys, "enableMarket")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (address market, bool bEnable) = abi.decode(params, (address, bool));
         marketEnable[market] = bEnable;
+        emit MarketEnableChanged(market, bEnable);
     }
 
     function setParams(bytes calldata signData, bytes calldata keys)
         external
         validSignOfOwner(signData, keys, "setParams")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (address _newOkse, address _newUSDC) = abi.decode(
             params,
@@ -219,6 +226,7 @@ contract MarketManager is MultiSigOwner, Manager {
         );
         OKSE = _newOkse;
         USDC = _newUSDC;
+        emit TokenAddressChanged(OKSE, USDC);
     }
 
     // verified
@@ -226,11 +234,25 @@ contract MarketManager is MultiSigOwner, Manager {
         public
         validSignOfOwner(signData, keys, "setOkseAsPayment")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         bool bEnable = abi.decode(params, (bool));
         oksePaymentEnable = bEnable;
+        emit OkseAsPaymentChanged(oksePaymentEnable);
+    }
+
+    function setEmergencyStop(bytes calldata signData, bytes calldata keys)
+        public
+        validSignOfOwner(signData, keys, "setEmergencyStop")
+    {
+        (, , , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, uint256, bytes)
+        );
+        bool _value = abi.decode(params, (bool));
+        emergencyStop = _value;
+        emit EmergencyStopChanged(emergencyStop);
     }
 }

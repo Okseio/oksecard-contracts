@@ -6,7 +6,6 @@ pragma solidity ^0.7.0;
 pragma abicoder v2;
 import "./interfaces/ERC20Interface.sol";
 import "./interfaces/ICard.sol";
-import "./libraries/Converter.sol";
 import "./MultiSigOwner.sol";
 import "./Manager.sol";
 
@@ -16,6 +15,9 @@ contract CashBackManager is MultiSigOwner, Manager {
     bool public cashBackEnable;
     // cashback percent for each level
     uint256[] public CashBackPercents;
+
+    event CashBackEnableChanged(bool cashBackEnable);
+    event CashBackPercentChanged(uint256 index, uint256 _amount);
 
     constructor(address _cardContract) Manager(_cardContract) {
         CashBackPercents = [10, 200, 300, 400, 500, 600];
@@ -35,9 +37,9 @@ contract CashBackManager is MultiSigOwner, Manager {
         public
         validSignOfOwner(signData, keys, "setCashBackPercent")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (uint256 index, uint256 _amount) = abi.decode(
             params,
@@ -45,17 +47,19 @@ contract CashBackManager is MultiSigOwner, Manager {
         );
         require(index <= MAX_LEVEL, "level<=5");
         CashBackPercents[index] = _amount;
+        emit CashBackPercentChanged(index, _amount);
     }
 
     function setCashBackEnable(bytes calldata signData, bytes calldata keys)
         public
         validSignOfOwner(signData, keys, "setCashBackEnable")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         bool newEnabled = abi.decode(params, (bool));
         cashBackEnable = newEnabled;
+        emit CashBackEnableChanged(cashBackEnable);
     }
 }

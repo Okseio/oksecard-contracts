@@ -24,6 +24,9 @@ contract LimitManager is MultiSigOwner, Manager {
     mapping(address => uint256) public userDailyLimits;
     uint256[] public DailyLimits;
     uint256 public timeDiff;
+    event TimeDiffChanged(uint256 timeDiff);
+    event DailyLimitChanged(uint256 index, uint256 _amount);
+    event UserDailyLimitChanged(address userAddr, uint256 usdAmount);
 
     constructor(address _cardContract, address _levelManager)
         Manager(_cardContract)
@@ -101,9 +104,9 @@ contract LimitManager is MultiSigOwner, Manager {
         public
         validSignOfOwner(signData, keys, "setDailyLimit")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (uint256 index, uint256 _amount) = abi.decode(
             params,
@@ -111,6 +114,7 @@ contract LimitManager is MultiSigOwner, Manager {
         );
         require(index <= MAX_LEVEL, "level<=5");
         DailyLimits[index] = _amount;
+        emit DailyLimitChanged(index, _amount);
     }
 
     // verified
@@ -118,27 +122,28 @@ contract LimitManager is MultiSigOwner, Manager {
         public
         validSignOfOwner(signData, keys, "setUserDailyLimits")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (address userAddr, uint256 usdAmount) = abi.decode(
             params,
             (address, uint256)
         );
         userDailyLimits[userAddr] = usdAmount;
-        // emit UserDailyLimitChanged(userAddr, usdAmount);
+        emit UserDailyLimitChanged(userAddr, usdAmount);
     }
 
     function setTimeDiff(bytes calldata signData, bytes calldata keys)
         external
         validSignOfOwner(signData, keys, "setTimeDiff")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         uint256 _value = abi.decode(params, (uint256));
         timeDiff = _value;
+        emit TimeDiffChanged(timeDiff);
     }
 }

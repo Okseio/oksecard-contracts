@@ -18,6 +18,8 @@ contract LevelManager is MultiSigOwner, Manager {
     uint256 public constant MAX_LEVEL = 5;
     uint256[] public OkseStakeAmounts;
     event UserLevelChanged(address userAddr, uint256 newLevel);
+    event OkseStakeAmountChanged(uint256 index, uint256 _amount);
+    event LevelValidationPeriodChanged(uint256 levelValidationPeriod);
 
     constructor(address _cardContract) Manager(_cardContract) {
         // levelValidationPeriod = 30 days;
@@ -102,12 +104,13 @@ contract LevelManager is MultiSigOwner, Manager {
         bytes calldata signData,
         bytes calldata keys
     ) public validSignOfOwner(signData, keys, "setLevelValidationPeriod") {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         uint256 _newValue = abi.decode(params, (uint256));
         levelValidationPeriod = _newValue;
+        emit LevelValidationPeriodChanged(levelValidationPeriod);
     }
 
     // verified
@@ -115,9 +118,9 @@ contract LevelManager is MultiSigOwner, Manager {
         public
         validSignOfOwner(signData, keys, "setOkseStakeAmount")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (uint256 index, uint256 _amount) = abi.decode(
             params,
@@ -125,5 +128,6 @@ contract LevelManager is MultiSigOwner, Manager {
         );
         require(index < MAX_LEVEL, "level<5");
         OkseStakeAmounts[index] = _amount;
+        emit OkseStakeAmountChanged(index, _amount);
     }
 }

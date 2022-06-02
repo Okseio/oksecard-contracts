@@ -41,25 +41,27 @@ contract OwnerConstants is MultiSigOwner {
     uint256 public monthlyFeeAmount; // 6.99 USD
     // if user pay monthly fee using okse, then he will pay less amount fro this percent. 0% => 0, 100% => 10000
     uint256 public okseMonthlyProfit; // 10%
-
-    bool public emergencyStop;
-
+    // buy tx fee in usd
+    uint256 public buyTxFee; // 0.7 usd
     event ManagerAddressChanged(
-        address owner,
         address treasuryAddress,
         address financialAddress,
         address masterAddress,
         address monthlyFeeAddress
     );
+    event FeeValuesChanged(
+        uint256 monthlyFeeAmount,
+        uint256 okseMonthlyProfit,
+        uint256 withdrawFeePercent,
+        uint256 buyTxFee,
+        uint256 buyFeePercent
+    );
+    event StakeContractParamChanged(
+        address stakeContractAddress,
+        uint256 stakePercent
+    );
 
-    modifier noEmergency() {
-        require(!emergencyStop, "stopped");
-        _;
-    }
-
-    constructor() {
-        // owner = msg.sender;
-    }
+    constructor() {}
 
     function getMonthlyFeeAmount(bool payFromOkse)
         public
@@ -93,18 +95,21 @@ contract OwnerConstants is MultiSigOwner {
         masterAddress = pendingMasterAddress;
         monthlyFeeAddress = pendingMonthlyFeeAddress;
         requestTimeOfManagerAddressUpdate = 0;
+        emit ManagerAddressChanged(
+            treasuryAddress,
+            financialAddress,
+            masterAddress,
+            monthlyFeeAddress
+        );
     }
 
     function requestManagerAddressUpdate(
         bytes calldata signData,
         bytes calldata keys
-    )
-        public
-        validSignOfOwner(signData, keys, "requestManagerAddressUpdate")
-    {
-        (, , bytes memory params) = abi.decode(
+    ) public validSignOfOwner(signData, keys, "requestManagerAddressUpdate") {
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (
             address _newTreasuryAddress,
@@ -121,50 +126,45 @@ contract OwnerConstants is MultiSigOwner {
     }
 
     // verified
-    function setWithdrawFeePercent(bytes calldata signData, bytes calldata keys)
+    function setFeeValues(bytes calldata signData, bytes calldata keys)
         public
-        validSignOfOwner(signData, keys, "setWithdrawFeePercent")
+        validSignOfOwner(signData, keys, "setFeeValues")
     {
-        (, , bytes memory params) = abi.decode(
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
-        uint256 newPercent = abi.decode(params, (uint256));
-        require(newPercent <= MAX_FEE_AMOUNT, "mfo");
-        // uint256 beforePercent = withdrawFeePercent;
-        withdrawFeePercent = newPercent;
-        // emit WithdrawFeePercentChanged(owner, newPercent, beforePercent);
-    }
-
-
-    // verified
-    function setMonthlyFee(bytes calldata signData, bytes calldata keys)
-        public
-        validSignOfOwner(signData, keys, "setMonthlyFee")
-    {
-        (, , bytes memory params) = abi.decode(
-            signData,
-            (bytes4, uint256, bytes)
+        (
+            uint256 _monthlyFeeAmount,
+            uint256 _okseMonthlyProfit,
+            uint256 _withdrawFeePercent,
+            uint256 newBuyFeePercent,
+            uint256 newBuyTxFee
+        ) = abi.decode(params, (uint256, uint256, uint256, uint256, uint256));
+        require(_okseMonthlyProfit <= 10000, "over percent");
+        require(_withdrawFeePercent <= MAX_FEE_AMOUNT, "mfo");
+        monthlyFeeAmount = _monthlyFeeAmount;
+        okseMonthlyProfit = _okseMonthlyProfit;
+        withdrawFeePercent = _withdrawFeePercent;
+        require(newBuyFeePercent <= MAX_FEE_AMOUNT, "mpo");
+        buyFeePercent = newBuyFeePercent;
+        buyTxFee = newBuyTxFee;
+        emit FeeValuesChanged(
+            monthlyFeeAmount,
+            okseMonthlyProfit,
+            withdrawFeePercent,
+            buyTxFee,
+            buyFeePercent
         );
-        (uint256 usdFeeAmount, uint256 okseProfitPercent) = abi.decode(
-            params,
-            (uint256, uint256)
-        );
-        require(okseProfitPercent <= 10000, "over percent");
-        monthlyFeeAmount = usdFeeAmount;
-        okseMonthlyProfit = okseProfitPercent;
     }
 
     function setStakeContractParams(
         bytes calldata signData,
         bytes calldata keys
-    )
-        public
-        validSignOfOwner(signData, keys, "setStakeContractParams")
-    {
-        (, , bytes memory params) = abi.decode(
+    ) public validSignOfOwner(signData, keys, "setStakeContractParams") {
+        (, , , bytes memory params) = abi.decode(
             signData,
-            (bytes4, uint256, bytes)
+            (bytes4, uint256, uint256, bytes)
         );
         (address _stakeContractAddress, uint256 _stakePercent) = abi.decode(
             params,
@@ -172,17 +172,6 @@ contract OwnerConstants is MultiSigOwner {
         );
         stakeContractAddress = _stakeContractAddress;
         stakePercent = _stakePercent;
-    }
-
-    function setEmergencyStop(bytes calldata signData, bytes calldata keys)
-        public
-        validSignOfOwner(signData, keys, "setEmergencyStop")
-    {
-        (, , bytes memory params) = abi.decode(
-            signData,
-            (bytes4, uint256, bytes)
-        );
-        bool _value = abi.decode(params, (bool));
-        emergencyStop = _value;
+        emit StakeContractParamChanged(stakeContractAddress, stakePercent);
     }
 }
