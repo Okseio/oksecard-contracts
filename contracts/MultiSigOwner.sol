@@ -6,7 +6,6 @@ contract MultiSigOwner {
     address[] public owners;
     mapping(uint256 => bool) public signatureId;
     bool private initialized;
-    uint256 signValidTime;
     // events
     event OwnershipTransferred(
         address indexed previousOwner,
@@ -50,7 +49,6 @@ contract MultiSigOwner {
     function initializeOwners(address[3] memory _owners) public {
         require(!initialized, "ai");
         owners = [_owners[0], _owners[1], _owners[2]];
-        signValidTime = 1 days;
         initialized = true;
     }
 
@@ -123,16 +121,4 @@ contract MultiSigOwner {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 
-    function setSignValidTime(bytes calldata signData, bytes calldata keys)
-        public
-        validSignOfOwner(signData, keys, "setSignValidTime")
-    {
-        (, , , bytes memory params) = abi.decode(
-            signData,
-            (bytes4, uint256, uint256, bytes)
-        );
-        uint256 newValue = abi.decode(params, (uint256));
-        signValidTime = newValue;
-        emit SignValidTimeChanged(signValidTime);
-    }
 }
