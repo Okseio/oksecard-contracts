@@ -36,7 +36,6 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     using SafeMath for uint256;
 
-    // address public WETH;
     // // // this is main currency for master wallet, master wallet will get always this token. normally we use USDC for this token.
     // address public USDC;
     // // // this is okse token address, which is used for setting of user's daily level and cashback.
@@ -1199,11 +1198,11 @@ contract OkseCard is OwnerConstants, SignerRole {
     //         signData,
     //         (bytes4, uint256, bytes)
     //     );
-    //     (address _newOkse, address _newUSDT) = abi.decode(
+    //     (address _newOkse, address _newUSDC) = abi.decode(
     //         params,
     //         (address, address)
     //     );
     //     OKSE = _newOkse;
-    //     USDC = _newUSDT;
+    //     USDC = _newUSDC;
     // }
 }

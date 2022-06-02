@@ -219,12 +219,12 @@ contract MarketManager is MultiSigOwner, Manager {
             signData,
             (bytes4, uint256, bytes)
         );
-        (address _newOkse, address _newUSDT) = abi.decode(
+        (address _newOkse, address _newUSDC) = abi.decode(
             params,
             (address, address)
         );
         OKSE = _newOkse;
-        USDC = _newUSDT;
+        USDC = _newUSDC;
     }
 
     // verified

@@ -33,7 +33,7 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     address public WETH;
     // // this is main currency for master wallet, master wallet will get always this token. normally we use USDC for this token.
-    address public _USDT;
+    address public _USDC;
     // // this is okse token address, which is used for setting of user's daily level and cashback.
     address public _OKSE;
     // default market , which is used when user didn't select any market for his main market
@@ -219,11 +219,11 @@ contract OkseCard is OwnerConstants, SignerRole {
         monthlyFeeAmount = 6.99 ether;
         okseMonthlyProfit = 1000;
         WETH = _WETH;
-        _USDT = _usdtAddress;
+        _USDC = _usdtAddress;
         _OKSE = _okseAddress;
         initialized = true;
         addMarket(WETH);
-        addMarket(_USDT);
+        addMarket(_USDC);
         addMarket(_OKSE);
         defaultMarket = WETH;
         timeDiff = 4 hours;
@@ -826,19 +826,19 @@ contract OkseCard is OwnerConstants, SignerRole {
         } else {
             addFeeUsdAmount = usdAmount;
         }
-        // change addFeeUsdAmount to _USDT asset amounts
+        // change addFeeUsdAmount to _USDC asset amounts
         // uint256 assetAmountIn = getAssetAmount(market, addFeeUsdAmount);
         // assetAmountIn = assetAmountIn + assetAmountIn / 10; //price tolerance = 10%
         uint256 usdtTotalAmount = convertUsdAmountToAssetAmount(
             addFeeUsdAmount,
-            _USDT
+            _USDC
         );
-        if (market != _USDT) {
-            // we need to change somehting here, because if there are not pair {market, _USDT} , then we have to add another path
+        if (market != _USDC) {
+            // we need to change somehting here, because if there are not pair {market, _USDC} , then we have to add another path
             // so please check the path is exist and if no, please add market, weth, usdt to path
             address[] memory path = ISwapper(swapper).getOptimumPath(
                 market,
-                _USDT
+                _USDC
             );
             uint256[] memory amounts = ISwapper(swapper).getAmountsIn(
                 usdtTotalAmount,
@@ -861,13 +861,13 @@ contract OkseCard is OwnerConstants, SignerRole {
                 usdtTotalAmount;
         }
         require(targetAddress != address(0), "mis");
-        uint256 usdtAmount = convertUsdAmountToAssetAmount(usdAmount, _USDT);
+        uint256 usdtAmount = convertUsdAmountToAssetAmount(usdAmount, _USDC);
         require(usdtTotalAmount >= usdtAmount, "sp");
-        TransferHelper.safeTransfer(_USDT, targetAddress, usdtAmount);
+        TransferHelper.safeTransfer(_USDC, targetAddress, usdtAmount);
         uint256 fee = usdtTotalAmount.sub(usdtAmount);
         if (feeAddress != address(0))
-            TransferHelper.safeTransfer(_USDT, feeAddress, fee);
-        spendAmount = convertAssetAmountToUsdAmount(usdtTotalAmount, _USDT);
+            TransferHelper.safeTransfer(_USDC, feeAddress, fee);
+        spendAmount = convertAssetAmountToUsdAmount(usdtTotalAmount, _USDC);
     }
 
     function convertUsdAmountToAssetAmount(
@@ -1110,14 +1110,14 @@ contract OkseCard is OwnerConstants, SignerRole {
         // emit BuyFeePercentChanged(owner, newPercent, beforePercent);
     }
 
-    function setParams(address _newOkse, address _newUSDT)
+    function setParams(address _newOkse, address _newUSDC)
         external
         onlyOwner
-        marketEnabled(_newUSDT)
+        marketEnabled(_newUSDC)
         marketEnabled(_newOkse)
     {
         _OKSE = _newOkse;
-        _USDT = _newUSDT;
+        _USDC = _newUSDC;
     }
 
     function setTimeDiff(uint256 _value) external onlyOwner {

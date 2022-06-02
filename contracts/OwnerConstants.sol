@@ -18,7 +18,7 @@ contract OwnerConstants is MultiSigOwner {
     address public treasuryAddress;
     // this address should be deposit okse in his balance and users can get cashback from this address.
     address public financialAddress;
-    // master address is used to send USDT tokens when user buy goods.
+    // master address is used to send USDC tokens when user buy goods.
     address public masterAddress;
     // monthly fee rewarded address
     address public monthlyFeeAddress;
