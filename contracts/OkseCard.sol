@@ -15,8 +15,9 @@ import "./interfaces/ICashBackManager.sol";
 import "./interfaces/IWETH9.sol";
 import "./interfaces/ISwapper.sol";
 import "./interfaces/ERC20Interface.sol";
+import "./interfaces/IConverter.sol";
 import "./libraries/SafeMath.sol";
-import "./libraries/Converter.sol";
+
 import "./OwnerConstants.sol";
 import "./SignerRole.sol";
 
@@ -35,7 +36,7 @@ contract OkseCard is OwnerConstants, SignerRole {
     uint256 public constant CARD_VALIDATION_TIME = 30 days; // 30 days in prodcution
 
     using SafeMath for uint256;
-
+    address public immutable converter;
     address public swapper;
 
     // Price oracle address, which is used for verification of swapping assets amount
@@ -127,7 +128,8 @@ contract OkseCard is OwnerConstants, SignerRole {
      * The `constructor` is executed only once when the contract is created.
      * The `public` modifier makes a function callable from outside the contract.
      */
-    constructor(address _initialSigner) SignerRole(_initialSigner) {
+    constructor(address _converter, address _initialSigner) SignerRole(_initialSigner) {
+        converter = _converter;
         // The totalSupply is assigned to transaction sender, which is the account
         // that is deploying the contract.
     }
@@ -139,7 +141,6 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     // verified
     function initialize(
-        // address _owner,
         address _priceOracle,
         address _limitManager,
         address _levelManager,
@@ -179,7 +180,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         monthlyFeeAmount = 6.99 ether;
         okseMonthlyProfit = 1000;
         initialized = true;
-        // timeDiff = 4 hours;
     }
 
     /// modifier functions
@@ -623,7 +623,10 @@ contract OkseCard is OwnerConstants, SignerRole {
         // change _amount to USDC asset amounts
         // uint256 assetAmountIn = getAssetAmount(market, _amount);
         // assetAmountIn = assetAmountIn + assetAmountIn / 10; //price tolerance = 10%
-        _amount = Converter.convertUsdAmountToAssetAmount(_amount, USDC);
+        _amount = IConverter(converter).convertUsdAmountToAssetAmount(
+            _amount,
+            USDC
+        );
         uint256 userBal = usersBalances[userAddr][market];
         if (market != USDC) {
             // we need to change somehting here, because if there are not pair {market, USDC} , then we have to add another path
@@ -650,16 +653,17 @@ contract OkseCard is OwnerConstants, SignerRole {
             usersBalances[userAddr][market] = userBal.sub(_amount);
         }
         require(targetAddress != address(0), "mis");
-        uint256 usdcAmount = Converter.convertUsdAmountToAssetAmount(
-            usdAmount,
-            USDC
-        );
+        uint256 usdcAmount = IConverter(converter)
+            .convertUsdAmountToAssetAmount(usdAmount, USDC);
         require(_amount >= usdcAmount, "sp");
         TransferHelper.safeTransfer(USDC, targetAddress, usdcAmount);
         uint256 fee = _amount.sub(usdcAmount);
         if (feeAddress != address(0))
             TransferHelper.safeTransfer(USDC, feeAddress, fee);
-        spendAmount = Converter.convertAssetAmountToUsdAmount(_amount, USDC);
+        spendAmount = IConverter(converter).convertAssetAmountToUsdAmount(
+            _amount,
+            USDC
+        );
     }
 
     function cashBack(address userAddr, uint256 usdAmount) internal {
@@ -669,7 +673,7 @@ contract OkseCard is OwnerConstants, SignerRole {
                 ILevelManager(levelManager).getUserLevel(userAddr)
             );
         address OKSE = IMarketManager(marketManager).OKSE();
-        uint256 okseAmount = Converter.getAssetAmount(
+        uint256 okseAmount = IConverter(converter).getAssetAmount(
             OKSE,
             (usdAmount * cashBackPercent) / 10000,
             priceOracle

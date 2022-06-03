@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LICENSED
 pragma solidity ^0.7.0;
 pragma abicoder v2;
-
+// 2/3 Multi Sig Owner
 contract MultiSigOwner {
     address[] public owners;
     mapping(uint256 => bool) public signatureId;

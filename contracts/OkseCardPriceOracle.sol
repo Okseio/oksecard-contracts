@@ -169,13 +169,13 @@ contract OkseCardPriceOracle is PriceOracle, MultiSigOwner {
             signData,
             (bytes4, uint256, uint256, bytes)
         );
-        (address[] memory assets, uint256[] memory prices) = abi.decode(
+        (address[] memory _assets, uint256[] memory _prices) = abi.decode(
             params,
             (address[], uint256[])
         );
-        require(assets.length == prices.length, "le");
-        for (uint256 i = 0; i < assets.length; i++) {
-            setDirectPriceInternal(assets[i], prices[i]);
+        require(_assets.length == _prices.length, "le");
+        for (uint256 i = 0; i < _assets.length; i++) {
+            setDirectPriceInternal(_assets[i], _prices[i]);
         }
     }
 

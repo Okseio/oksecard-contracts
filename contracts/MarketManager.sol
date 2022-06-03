@@ -6,7 +6,7 @@ pragma solidity ^0.7.0;
 pragma abicoder v2;
 import "./interfaces/ERC20Interface.sol";
 import "./interfaces/ICard.sol";
-import "./libraries/Converter.sol";
+import "./interfaces/IConverter.sol";
 import "./MultiSigOwner.sol";
 import "./Manager.sol";
 
@@ -28,7 +28,7 @@ contract MarketManager is MultiSigOwner, Manager {
     // Set whether user can use okse as payment asset. normally it is false.
     bool public oksePaymentEnable;
     bool public emergencyStop;
-
+    address public immutable converter;
     modifier marketSupported(address market) {
         require(isMarketExist(market), "mns");
         _;
@@ -38,7 +38,7 @@ contract MarketManager is MultiSigOwner, Manager {
         require(marketEnable[market], "mdnd");
         _;
     }
-    
+
     event MarketAdded(address market);
     event DefaultMarketChanged(address newMarket);
     event TokenAddressChanged(address okse, address usdc);
@@ -50,7 +50,8 @@ contract MarketManager is MultiSigOwner, Manager {
         address _cardContract,
         address _WETH,
         address _usdcAddress,
-        address _okseAddress
+        address _okseAddress,
+        address _converter
     ) Manager(_cardContract) {
         WETH = _WETH;
         USDC = _usdcAddress;
@@ -59,6 +60,7 @@ contract MarketManager is MultiSigOwner, Manager {
         _addMarketInternal(USDC);
         _addMarketInternal(OKSE);
         defaultMarket = WETH;
+        converter = _converter;
     }
 
     //verified
@@ -133,7 +135,7 @@ contract MarketManager is MultiSigOwner, Manager {
         uint256[] memory assets = new uint256[](allMarkets.length);
 
         for (uint256 i = 0; i < allMarkets.length; i++) {
-            assets[i] = Converter.getUsdAmount(
+            assets[i] = IConverter(converter).getUsdAmount(
                 allMarkets[i],
                 ICard(cardContract).usersBalances(userAddr, allMarkets[i]),
                 ICard(cardContract).priceOracle()
@@ -152,7 +154,7 @@ contract MarketManager is MultiSigOwner, Manager {
             userAddr,
             market
         );
-        uint256 usdAmount = Converter.getUsdAmount(
+        uint256 usdAmount = IConverter(converter).getUsdAmount(
             market,
             assetAmount,
             ICard(cardContract).priceOracle()

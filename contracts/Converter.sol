@@ -1,9 +1,10 @@
 //SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.7.0;
-import "./SafeMath.sol";
-import "../interfaces/ERC20Interface.sol";
-import "../interfaces/PriceOracle.sol";
-library Converter {
+import "./libraries/SafeMath.sol";
+import "./interfaces/ERC20Interface.sol";
+import "./interfaces/PriceOracle.sol";
+
+contract Converter {
     using SafeMath for uint256;
 
     function convertUsdAmountToAssetAmount(
@@ -38,21 +39,22 @@ library Converter {
         }
     }
 
-    function getUsdAmount(address market, uint256 assetAmount, address priceOracle)
-        public
-        view
-        returns (uint256 usdAmount)
-    {
+    function getUsdAmount(
+        address market,
+        uint256 assetAmount,
+        address priceOracle
+    ) public view returns (uint256 usdAmount) {
         uint256 usdPrice = PriceOracle(priceOracle).getUnderlyingPrice(market);
         require(usdPrice > 0, "upe");
         usdAmount = (assetAmount * usdPrice) / (10**8);
     }
-        // verified not
-    function getAssetAmount(address market, uint256 usdAmount, address priceOracle)
-        public
-        view
-        returns (uint256 assetAmount)
-    {
+
+    // verified not
+    function getAssetAmount(
+        address market,
+        uint256 usdAmount,
+        address priceOracle
+    ) public view returns (uint256 assetAmount) {
         uint256 usdPrice = PriceOracle(priceOracle).getUnderlyingPrice(market);
         require(usdPrice > 0, "usd price error");
         assetAmount = (usdAmount * (10**8)) / usdPrice;
