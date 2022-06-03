@@ -20,6 +20,8 @@ interface IMarketManager {
 
     function userMainMarket(address userAddr) external view returns (address);
 
+    function slippage() external view returns (uint256);
+
     function getUserMainMarket(address userAddr)
         external
         view

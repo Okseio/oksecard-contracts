@@ -75,8 +75,6 @@ contract OkseCard is OwnerConstants, SignerRole {
         address userAddr;
         uint256 amount;
         uint256 validTime;
-        // address signer;
-        uint256 maxAssetAmount;
     }
     // emit event
 
@@ -128,7 +126,9 @@ contract OkseCard is OwnerConstants, SignerRole {
      * The `constructor` is executed only once when the contract is created.
      * The `public` modifier makes a function callable from outside the contract.
      */
-    constructor(address _converter, address _initialSigner) SignerRole(_initialSigner) {
+    constructor(address _converter, address _initialSigner)
+        SignerRole(_initialSigner)
+    {
         converter = _converter;
         // The totalSupply is assigned to transaction sender, which is the account
         // that is deploying the contract.
@@ -384,8 +384,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 id,
         SignData calldata _data,
         SignKeys calldata user_key,
-        address market,
-        uint256 maxAssetAmount
+        address market
     )
         public
         nonReentrant
@@ -421,8 +420,7 @@ contract OkseCard is OwnerConstants, SignerRole {
             _monthlyFee,
             monthlyFeeAddress,
             stakeContractAddress,
-            stakePercent,
-            maxAssetAmount
+            stakePercent
         );
         onUpdateUserBalance(
             userAddr,
@@ -558,8 +556,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 spendAmount = _makePayment(
             _data.market,
             _data.userAddr,
-            _data.amount,
-            _data.maxAssetAmount
+            _data.amount
         );
         cashBack(_data.userAddr, spendAmount);
         emit SignerBuyGoods(
@@ -578,8 +575,7 @@ contract OkseCard is OwnerConstants, SignerRole {
     function _makePayment(
         address market,
         address userAddr,
-        uint256 usdAmount,
-        uint256 maxAssetAmount
+        uint256 usdAmount
     ) internal returns (uint256 spendAmount) {
         uint256 beforeAmount = usersBalances[userAddr][market];
         spendAmount = calculateAmount(
@@ -588,8 +584,7 @@ contract OkseCard is OwnerConstants, SignerRole {
             usdAmount,
             masterAddress,
             treasuryAddress,
-            buyFeePercent,
-            maxAssetAmount
+            buyFeePercent
         );
         ILimitManager(limitManager).updateUserSpendAmount(userAddr, usdAmount);
 
@@ -610,8 +605,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 usdAmount,
         address targetAddress,
         address feeAddress,
-        uint256 feePercent,
-        uint256 maxAssetAmount
+        uint256 feePercent
     ) internal returns (uint256 spendAmount) {
         uint256 _amount;
         address USDC = IMarketManager(marketManager).USDC();
@@ -621,8 +615,15 @@ contract OkseCard is OwnerConstants, SignerRole {
             _amount = usdAmount;
         }
         // change _amount to USDC asset amounts
-        // uint256 assetAmountIn = getAssetAmount(market, _amount);
-        // assetAmountIn = assetAmountIn + assetAmountIn / 10; //price tolerance = 10%
+        uint256 assetAmountIn = IConverter(converter).getAssetAmount(
+            market,
+            _amount,
+            priceOracle
+        );
+        assetAmountIn =
+            assetAmountIn +
+            (assetAmountIn * IMarketManager(marketManager).slippage()) /
+            10000;
         _amount = IConverter(converter).convertUsdAmountToAssetAmount(
             _amount,
             USDC
@@ -640,7 +641,7 @@ contract OkseCard is OwnerConstants, SignerRole {
                 path
             );
 
-            require(amounts[0] <= userBal && amounts[0] < maxAssetAmount, "ua");
+            require(amounts[0] < assetAmountIn, "ua");
             usersBalances[userAddr][market] = userBal.sub(amounts[0]);
             TransferHelper.safeTransfer(
                 path[0],
@@ -650,6 +651,7 @@ contract OkseCard is OwnerConstants, SignerRole {
             ISwapper(swapper)._swap(amounts, path, address(this));
         } else {
             // require(_amount <= usersBalances[userAddr][market], "uat");
+            require(_amount < assetAmountIn, "au");
             usersBalances[userAddr][market] = userBal.sub(_amount);
         }
         require(targetAddress != address(0), "mis");
@@ -717,8 +719,7 @@ contract OkseCard is OwnerConstants, SignerRole {
                     _data.market,
                     chainId,
                     _data.amount,
-                    _data.validTime,
-                    _data.maxAssetAmount
+                    _data.validTime
                 )
             );
     }
@@ -745,8 +746,7 @@ contract OkseCard is OwnerConstants, SignerRole {
                             _data.market,
                             chainId,
                             _data.amount,
-                            _data.validTime,
-                            _data.maxAssetAmount
+                            _data.validTime
                         )
                     )
                 ),
