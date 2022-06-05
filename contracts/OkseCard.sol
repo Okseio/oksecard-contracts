@@ -522,6 +522,7 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // decimal of usdAmount is 18
+    // newly verified
     function buyGoods(SignData calldata _data, SignKeys[2] calldata signer_key)
         external
         nonReentrant
@@ -544,7 +545,6 @@ contract OkseCard is OwnerConstants, SignerRole {
             "pru"
         );
         signatureId[_data.id] = true;
-        require(signer_key[0].s != signer_key[1].s, "");
         if (_data.market == IMarketManager(marketManager).OKSE()) {
             require(IMarketManager(marketManager).oksePaymentEnable(), "jsy");
         }
