@@ -287,7 +287,7 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // verified
+    // newly verified
     function deposit(address market, uint256 amount)
         public
         marketEnabled(market)
@@ -304,7 +304,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         emit UserDeposit(msg.sender, market, amount);
     }
 
-    // verified
+    // newly verified
     function depositETH() public payable nonReentrant {
         address WETH = IMarketManager(marketManager).WETH();
         require(IMarketManager(marketManager).marketEnable(WETH), "me");
@@ -357,8 +357,7 @@ contract OkseCard is OwnerConstants, SignerRole {
                                 market,
                                 chainId,
                                 uint256(0),
-                                validTime,
-                                uint256(0)
+                                validTime
                             )
                         )
                     ),
@@ -464,8 +463,7 @@ contract OkseCard is OwnerConstants, SignerRole {
                                 market,
                                 chainId,
                                 amount,
-                                validTime,
-                                uint256(0)
+                                validTime
                             )
                         )
                     ),

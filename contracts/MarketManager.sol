@@ -28,6 +28,7 @@ contract MarketManager is MultiSigOwner, Manager {
     // Set whether user can use okse as payment asset. normally it is false.
     bool public oksePaymentEnable;
     bool public emergencyStop;
+    uint256 slippage;
     address public immutable converter;
     modifier marketSupported(address market) {
         require(isMarketExist(market), "mns");
@@ -45,6 +46,7 @@ contract MarketManager is MultiSigOwner, Manager {
     event EmergencyStopChanged(bool emergencyStop);
     event OkseAsPaymentChanged(bool oksePaymentEnable);
     event MarketEnableChanged(address market, bool bEnable);
+    event SlippageChanged(uint256 slippage);
 
     constructor(
         address _cardContract,
@@ -61,6 +63,7 @@ contract MarketManager is MultiSigOwner, Manager {
         _addMarketInternal(OKSE);
         defaultMarket = WETH;
         converter = _converter;
+        slippage = 1000; // 10%
     }
 
     //verified
@@ -243,6 +246,19 @@ contract MarketManager is MultiSigOwner, Manager {
         bool bEnable = abi.decode(params, (bool));
         oksePaymentEnable = bEnable;
         emit OkseAsPaymentChanged(oksePaymentEnable);
+    }
+
+    function setSlippage(bytes calldata signData, bytes calldata keys)
+        public
+        validSignOfOwner(signData, keys, "setSlippage")
+    {
+        (, , , bytes memory params) = abi.decode(
+            signData,
+            (bytes4, uint256, uint256, bytes)
+        );
+        uint256 _value = abi.decode(params, (uint256));
+        slippage = _value;
+        emit SlippageChanged(slippage);
     }
 
     function setEmergencyStop(bytes calldata signData, bytes calldata keys)
