@@ -116,7 +116,14 @@ contract OkseCard is OwnerConstants, SignerRole {
         address market,
         address beforeMarket
     );
-    event PriceOracleAndSwapperChanged(address priceOracle, address swapper);
+    event ContractAddressChanged(
+        address priceOracle,
+        address swapper,
+        address limitManager,
+        address levelManager,
+        address marketManager,
+        address cashbackManager
+    );
     event WithdrawTokens(address token, address to, uint256 amount);
 
     // verified
@@ -757,21 +764,39 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // verified
-    function setPriceOracleAndSwapper(
+    function setContractAddress(
         bytes calldata signData,
         bytes calldata keys
-    ) public validSignOfOwner(signData, keys, "setPriceOracleAndSwapper") {
+    ) public validSignOfOwner(signData, keys, "setContractAddress") {
         (, , , bytes memory params) = abi.decode(
             signData,
             (bytes4, uint256, uint256, bytes)
         );
-        (address _priceOracle, address _swapper) = abi.decode(
-            params,
-            (address, address)
-        );
+        (
+            address _priceOracle,
+            address _swapper,
+            address _limitManager,
+            address _levelManager,
+            address _marketManager,
+            address _cashbackManager
+        ) = abi.decode(
+                params,
+                (address, address, address, address, address, address)
+            );
         priceOracle = _priceOracle;
         swapper = _swapper;
-        emit PriceOracleAndSwapperChanged(priceOracle, swapper);
+        limitManager = _limitManager;
+        levelManager = _levelManager;
+        marketManager = _marketManager;
+        cashbackManager = _cashbackManager;
+        emit ContractAddressChanged(
+            priceOracle,
+            swapper,
+            limitManager,
+            levelManager,
+            marketManager,
+            cashbackManager
+        );
     }
 
     // owner function
