@@ -331,6 +331,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         );
     }
 
+    // newly verified
     function setUserMainMarket(
         uint256 id,
         address market,
@@ -401,22 +402,23 @@ contract OkseCard is OwnerConstants, SignerRole {
         );
         signatureId[id] = true;
         // increase valid period
+
         // extend user's valid time
         uint256 _monthlyFee = getMonthlyFeeAmount(
             market == IMarketManager(marketManager).OKSE()
         );
-
+        uint256 _tempVal = _monthlyFee;
         userValidTimes[userAddr] = block.timestamp + CARD_VALIDATION_TIME;
 
         if (stakeContractAddress != address(0)) {
-            _monthlyFee = (_monthlyFee * 10000) / (10000 + stakePercent);
+            _tempVal = (_monthlyFee * 10000) / (10000 + stakePercent);
         }
 
         uint256 beforeAmount = usersBalances[userAddr][market];
         calculateAmount(
             market,
             userAddr,
-            _monthlyFee,
+            _tempVal,
             monthlyFeeAddress,
             stakeContractAddress,
             stakePercent
@@ -435,7 +437,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         );
     }
 
-    // verified
+    // newly verified
     function withdraw(
         uint256 id,
         address market,

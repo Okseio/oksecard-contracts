@@ -28,7 +28,7 @@ contract MarketManager is MultiSigOwner, Manager {
     // Set whether user can use okse as payment asset. normally it is false.
     bool public oksePaymentEnable;
     bool public emergencyStop;
-    uint256 slippage;
+    uint256 public slippage;
     address public immutable converter;
     modifier marketSupported(address market) {
         require(isMarketExist(market), "mns");
