@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LICENSED
 pragma solidity ^0.7.0;
 pragma abicoder v2;
+
 // 2/3 Multi Sig Owner
 contract MultiSigOwner {
     address[] public owners;
@@ -19,7 +20,10 @@ contract MultiSigOwner {
     ) {
         require(isOwner(msg.sender), "on");
         address signer = getSigner(signData, keys);
-        require(signer != msg.sender && isOwner(signer), "is");
+        require(
+            signer != msg.sender && isOwner(signer) && signer != address(0),
+            "is"
+        );
         (bytes4 method, uint256 id, uint256 validTime, ) = abi.decode(
             signData,
             (bytes4, uint256, uint256, bytes)
@@ -47,7 +51,13 @@ contract MultiSigOwner {
     constructor() {}
 
     function initializeOwners(address[3] memory _owners) public {
-        require(!initialized, "ai");
+        require(
+            !initialized &&
+                _owners[0] != address(0) &&
+                _owners[1] != address(0) &&
+                _owners[2] != address(0),
+            "ai"
+        );
         owners = [_owners[0], _owners[1], _owners[2]];
         initialized = true;
     }
@@ -120,5 +130,4 @@ contract MultiSigOwner {
         owners[index] = newOwner;
         emit OwnershipTransferred(oldOwner, newOwner);
     }
-
 }

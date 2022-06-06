@@ -253,7 +253,7 @@ contract OkseCard is OwnerConstants, SignerRole {
 
     // verified
     function getUserExpired(address _userAddr) public view returns (bool) {
-        if (userValidTimes[_userAddr] + 25 days > block.timestamp) {
+        if (userValidTimes[_userAddr].add(25 days) > block.timestamp) {
             return false;
         }
         return true;
@@ -415,10 +415,10 @@ contract OkseCard is OwnerConstants, SignerRole {
             market == IMarketManager(marketManager).OKSE()
         );
         uint256 _tempVal = _monthlyFee;
-        userValidTimes[userAddr] = block.timestamp + CARD_VALIDATION_TIME;
+        userValidTimes[userAddr] = block.timestamp.add(CARD_VALIDATION_TIME);
 
         if (stakeContractAddress != address(0)) {
-            _tempVal = (_monthlyFee * 10000) / (10000 + stakePercent);
+            _tempVal = (_monthlyFee.mul(10000)).div(stakePercent.add(10000));
         }
 
         uint256 beforeAmount = usersBalances[userAddr][market];
@@ -493,7 +493,7 @@ contract OkseCard is OwnerConstants, SignerRole {
         if (market == WETH) {
             IWETH9(WETH).withdraw(amount);
             if (treasuryAddress != address(0)) {
-                uint256 feeAmount = (amount * withdrawFeePercent) / 10000;
+                uint256 feeAmount = (amount.mul(withdrawFeePercent)).div(10000);
                 if (feeAmount > 0) {
                     TransferHelper.safeTransferETH(treasuryAddress, feeAmount);
                 }
@@ -506,7 +506,7 @@ contract OkseCard is OwnerConstants, SignerRole {
             }
         } else {
             if (treasuryAddress != address(0)) {
-                uint256 feeAmount = (amount * withdrawFeePercent) / 10000;
+                uint256 feeAmount = (amount.mul(withdrawFeePercent)).div(10000);
                 if (feeAmount > 0) {
                     TransferHelper.safeTransfer(
                         market,
@@ -617,7 +617,9 @@ contract OkseCard is OwnerConstants, SignerRole {
         uint256 _amount;
         address USDC = IMarketManager(marketManager).USDC();
         if (feeAddress != address(0)) {
-            _amount = usdAmount + (usdAmount * feePercent) / 10000 + buyTxFee;
+            _amount = usdAmount.add((usdAmount.mul(feePercent)).div(10000)).add(
+                    buyTxFee
+                );
         } else {
             _amount = usdAmount;
         }
@@ -627,10 +629,10 @@ contract OkseCard is OwnerConstants, SignerRole {
             _amount,
             priceOracle
         );
-        assetAmountIn =
-            assetAmountIn +
-            (assetAmountIn * IMarketManager(marketManager).slippage()) /
-            10000;
+        assetAmountIn = assetAmountIn.add(
+            (assetAmountIn.mul(IMarketManager(marketManager).slippage())) /
+                10000
+        );
         _amount = IConverter(converter).convertUsdAmountToAssetAmount(
             _amount,
             USDC
@@ -684,14 +686,14 @@ contract OkseCard is OwnerConstants, SignerRole {
         address OKSE = IMarketManager(marketManager).OKSE();
         uint256 okseAmount = IConverter(converter).getAssetAmount(
             OKSE,
-            (usdAmount * cashBackPercent) / 10000,
+            (usdAmount.mul(cashBackPercent)).div(10000),
             priceOracle
         );
         // require(ERC20Interface(OKSE).balanceOf(address(this)) >= okseAmount , "insufficient OKSE");
         if (usersBalances[financialAddress][OKSE] > okseAmount) {
-            usersBalances[financialAddress][OKSE] =
-                usersBalances[financialAddress][OKSE] -
-                okseAmount;
+            usersBalances[financialAddress][OKSE] = usersBalances[
+                financialAddress
+            ][OKSE].sub(okseAmount);
             //needs extra check that owner deposited how much OKSE for cashBack
             _addUserBalance(OKSE, userAddr, okseAmount);
         }
@@ -764,10 +766,10 @@ contract OkseCard is OwnerConstants, SignerRole {
     }
 
     // verified
-    function setContractAddress(
-        bytes calldata signData,
-        bytes calldata keys
-    ) public validSignOfOwner(signData, keys, "setContractAddress") {
+    function setContractAddress(bytes calldata signData, bytes calldata keys)
+        public
+        validSignOfOwner(signData, keys, "setContractAddress")
+    {
         (, , , bytes memory params) = abi.decode(
             signData,
             (bytes4, uint256, uint256, bytes)

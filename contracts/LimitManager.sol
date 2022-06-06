@@ -72,7 +72,7 @@ contract LimitManager is MultiSigOwner, Manager {
         view
         returns (uint256)
     {
-        uint256 currentDate = (block.timestamp + timeDiff) / 1 days; // UTC -> PST time zone 12 PM
+        uint256 currentDate = (block.timestamp.add(timeDiff)).div(1 days); // UTC -> PST time zone 12 PM
         if (usersSpendTime[userAddr] != currentDate) {
             return 0;
         }
@@ -84,7 +84,7 @@ contract LimitManager is MultiSigOwner, Manager {
         public
         onlyFromCardContract
     {
-        uint256 currentDate = (block.timestamp + timeDiff) / 1 days; // UTC -> PST time zone 12 PM
+        uint256 currentDate = (block.timestamp.add(timeDiff)).div(1 days); // UTC -> PST time zone 12 PM
         uint256 totalSpendAmount;
 
         if (usersSpendTime[userAddr] != currentDate) {

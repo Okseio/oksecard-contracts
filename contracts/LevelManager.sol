@@ -6,8 +6,9 @@ pragma solidity ^0.7.0;
 import "./MultiSigOwner.sol";
 import "./Manager.sol";
 import "./interfaces/ICard.sol";
-
+import "./libraries/SafeMath.sol";
 contract LevelManager is MultiSigOwner, Manager {
+    using SafeMath for uint256;
     // current user level of each user. 1~5 level enabled.
     mapping(address => uint256) public usersLevel;
     // the time okse amount is updated
@@ -42,7 +43,7 @@ contract LevelManager is MultiSigOwner, Manager {
             return newLevel;
         } else {
             if (
-                usersOkseUpdatedTime[userAddr] + levelValidationPeriod <
+                usersOkseUpdatedTime[userAddr].add(levelValidationPeriod) <
                 block.timestamp
             ) {
                 return newLevel;
@@ -86,7 +87,7 @@ contract LevelManager is MultiSigOwner, Manager {
             emit UserLevelChanged(userAddr, newLevel);
         } else {
             if (
-                usersOkseUpdatedTime[userAddr] + levelValidationPeriod <
+                usersOkseUpdatedTime[userAddr].add(levelValidationPeriod) <
                 block.timestamp
             ) {
                 usersLevel[userAddr] = newLevel;

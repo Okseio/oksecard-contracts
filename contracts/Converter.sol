@@ -46,7 +46,7 @@ contract Converter {
     ) public view returns (uint256 usdAmount) {
         uint256 usdPrice = PriceOracle(priceOracle).getUnderlyingPrice(market);
         require(usdPrice > 0, "upe");
-        usdAmount = (assetAmount * usdPrice) / (10**8);
+        usdAmount = (assetAmount.mul(usdPrice)).div(10**8);
     }
 
     // verified not
@@ -57,6 +57,6 @@ contract Converter {
     ) public view returns (uint256 assetAmount) {
         uint256 usdPrice = PriceOracle(priceOracle).getUnderlyingPrice(market);
         require(usdPrice > 0, "usd price error");
-        assetAmount = (usdAmount * (10**8)) / usdPrice;
+        assetAmount = (usdAmount.mul(10**8)).div(usdPrice);
     }
 }

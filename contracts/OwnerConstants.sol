@@ -1,11 +1,10 @@
 //SPDX-License-Identifier: LICENSED
 pragma solidity ^0.7.0;
 import "./MultiSigOwner.sol";
+import "./libraries/SafeMath.sol";
 
 contract OwnerConstants is MultiSigOwner {
-    uint256 public constant HR48 = 10 minutes; //for testing
-    // address public owner;
-
+    using SafeMath for uint256;
     // daily limit contants
     uint256 public constant MAX_LEVEL = 5;
 
@@ -17,12 +16,6 @@ contract OwnerConstants is MultiSigOwner {
     address public masterAddress;
     // monthly fee rewarded address
     address public monthlyFeeAddress;
-
-    address public pendingTreasuryAddress;
-    address public pendingFinancialAddress;
-    address public pendingMasterAddress;
-    address public pendingMonthlyFeeAddress;
-    uint256 public requestTimeOfManagerAddressUpdate;
 
     // staking contract address, which is used to receive 20% of monthly fee, so staked users can be rewarded from this contract
     address public stakeContractAddress;
@@ -70,43 +63,19 @@ contract OwnerConstants is MultiSigOwner {
     {
         uint256 result;
         if (payFromOkse) {
-            result =
-                monthlyFeeAmount -
-                (monthlyFeeAmount * okseMonthlyProfit) /
-                10000;
+            result = monthlyFeeAmount.sub(
+                (monthlyFeeAmount.mul(okseMonthlyProfit)).div(10000)
+            );
         } else {
             result = monthlyFeeAmount;
         }
         return result;
     }
 
-    // I have to add 48 hours delay in this function
     function setManagerAddresses(bytes calldata signData, bytes calldata keys)
         public
         validSignOfOwner(signData, keys, "setManagerAddresses")
     {
-        require(
-            block.timestamp > requestTimeOfManagerAddressUpdate + HR48 &&
-                requestTimeOfManagerAddressUpdate > 0,
-            "need to wait 48hr"
-        );
-        treasuryAddress = pendingTreasuryAddress;
-        financialAddress = pendingFinancialAddress;
-        masterAddress = pendingMasterAddress;
-        monthlyFeeAddress = pendingMonthlyFeeAddress;
-        requestTimeOfManagerAddressUpdate = 0;
-        emit ManagerAddressChanged(
-            treasuryAddress,
-            financialAddress,
-            masterAddress,
-            monthlyFeeAddress
-        );
-    }
-
-    function requestManagerAddressUpdate(
-        bytes calldata signData,
-        bytes calldata keys
-    ) public validSignOfOwner(signData, keys, "requestManagerAddressUpdate") {
         (, , , bytes memory params) = abi.decode(
             signData,
             (bytes4, uint256, uint256, bytes)
@@ -118,11 +87,16 @@ contract OwnerConstants is MultiSigOwner {
             address _mothlyFeeAddress
         ) = abi.decode(params, (address, address, address, address));
 
-        pendingTreasuryAddress = _newTreasuryAddress;
-        pendingFinancialAddress = _newFinancialAddress;
-        pendingMasterAddress = _newMasterAddress;
-        pendingMonthlyFeeAddress = _mothlyFeeAddress;
-        requestTimeOfManagerAddressUpdate = block.timestamp;
+        treasuryAddress = _newTreasuryAddress;
+        financialAddress = _newFinancialAddress;
+        masterAddress = _newMasterAddress;
+        monthlyFeeAddress = _mothlyFeeAddress;
+        emit ManagerAddressChanged(
+            treasuryAddress,
+            financialAddress,
+            masterAddress,
+            monthlyFeeAddress
+        );
     }
 
     // verified

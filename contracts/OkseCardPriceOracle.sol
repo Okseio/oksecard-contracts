@@ -19,8 +19,6 @@ contract OkseCardPriceOracle is PriceOracle, MultiSigOwner {
         uint256 newPriceMantissa
     );
 
-    event NewAdmin(address oldAdmin, address newAdmin);
-
     mapping(address => address) priceFeeds;
     event PriceFeedChanged(
         address asset,
