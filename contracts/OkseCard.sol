@@ -630,8 +630,7 @@ contract OkseCard is OwnerConstants, SignerRole {
             priceOracle
         );
         assetAmountIn = assetAmountIn.add(
-            (assetAmountIn.mul(IMarketManager(marketManager).slippage())) /
-                10000
+            (assetAmountIn.mul(IMarketManager(marketManager).slippage())).div(10000)
         );
         _amount = IConverter(converter).convertUsdAmountToAssetAmount(
             _amount,
