@@ -181,9 +181,9 @@ contract OkseCard is OwnerConstants, SignerRole {
         //initialize OwnerConstants arrays
 
         stakePercent = 15 * (100 + 15);
-        buyFeePercent = 100;
+        buyFeePercent = 250;
         buyTxFee = 0.7 ether;
-        withdrawFeePercent = 10;
+        withdrawFeePercent = 0;
         monthlyFeeAmount = 6.99 ether;
         okseMonthlyProfit = 1000;
         initialized = true;
